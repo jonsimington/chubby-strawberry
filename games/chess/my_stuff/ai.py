@@ -15,7 +15,7 @@ class AI(BaseAI):
             str: The name of your Player.
         """
 
-        return "Chess Python Player"  # REPLACE THIS WITH YOUR TEAM NAME
+        return "team-john-maruska"  # REPLACE THIS WITH YOUR TEAM NAME
 
     def start(self):
         """ This is called once the game starts and your AI knows its playerID
@@ -28,8 +28,8 @@ class AI(BaseAI):
         """ This is called every time the game's state updates, so if you are
         tracking anything you can update it here.
         """
-
         # replace with your game updated logic
+        # Counter to keep track of 50 turn of no-conflict expiration goes here
 
     def end(self, won, reason):
         """ This is called when the game ends, you can clean up your data and
@@ -71,6 +71,7 @@ class AI(BaseAI):
         print("Time Remaining: " + str(self.player.time_remaining) + " ns")
 
         # 4) make a random (and probably invalid) move.
+        # TODO: Replace this function for assignment 1.
         random_piece = random.choice(self.player.pieces)
         random_file = chr(ord("a") + random.randrange(8))
         random_rank = random.randrange(8) + 1
@@ -124,3 +125,4 @@ class AI(BaseAI):
 
                 output += "|"
             print(output)
+
