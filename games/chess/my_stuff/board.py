@@ -5,10 +5,9 @@ class Board(list):
         :param fen: String adhering to Forsyth-Edwards Notation format.
         """
         super().__init__()
-        self._width = 8
+        self.width = 8
         self.height = 8
         self.generate_by(fen)
-        # TODO: Parse fen to generate board-state
 
     def copy(self):
         pass
@@ -18,10 +17,10 @@ class Board(list):
         if fen is None:
             self.append(["r", "n", "b", "q", "k", "b", "n", "r"])
             self.append(["p", "p", "p", "p", "p", "p", "p", "p"])
-            self.append(["", "", "", "", "", "", "", ""])
-            self.append(["", "", "", "", "", "", "", ""])
-            self.append(["", "", "", "", "", "", "", ""])
-            self.append(["", "", "", "", "", "", "", ""])
+            self.append(["",  "",  "",  "",  "",  "",  "",  ""])
+            self.append(["",  "",  "",  "",  "",  "",  "",  ""])
+            self.append(["",  "",  "",  "",  "",  "",  "",  ""])
+            self.append(["",  "",  "",  "",  "",  "",  "",  ""])
             self.append(["P", "P", "P", "P", "P", "P", "P", "P"])
             self.append(["R", "N", "B", "Q", "K", "B", "N", "R"])
         else:

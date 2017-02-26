@@ -7,7 +7,8 @@ import random
 class AI(BaseAI):
     """ The basic AI functions that are the same between games. """
 
-    def get_name(self):
+    @staticmethod
+    def get_name():
         """ This is the name you send to the server so your AI will control the
         player named this string.
 
