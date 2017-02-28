@@ -2,7 +2,6 @@ from my_stuff.board import Board
 from my_stuff.chess import get_draw_counter, get_en_passant_coordinates, get_coordinates
 
 # TODO: King -- castling
-# TODO: 'check' avoidance function
 # Note: Print in algebraic notation?? Don't want to do this.
 
 
@@ -72,15 +71,8 @@ class State:
 
         def space_threatens_check(x, y, piece):
             if 0 <= x < new_board.width and 0 <= y < new_board.height:
-                if new_board[x][y] is enemy(piece):
+                if new_board[x][y] is self.enemy(piece):
                     return True
-
-        def enemy(piece: str):
-            assert type(piece) is str
-            if self._color is "White":
-                return piece.lower()
-            elif self._color is "Black":
-                return piece.upper()
 
         # Knights encircling the king
         knight_mods = [(2, 1), (2, -1), (-1, -2), (1, -2), (-2, -1), (-2, 1), (-1, 2), (1, 2)]
@@ -110,6 +102,20 @@ class State:
 
         # No pieces threatening check!
         return False
+
+    def enemy(self, piece: str):
+        assert type(piece) is str
+        if self._color is "White":
+            return piece.lower()
+        elif self._color is "Black":
+            return piece.upper()
+
+    def friendly(self, piece: str):
+        assert type(piece) is str
+        if self._color is "White":
+            return piece.upper()
+        elif self._color is "Black":
+            return piece.lower()
 
     def potential_moves(self):
         """ Cycles through all pieces and generates a list of moves that are valid
@@ -180,7 +186,24 @@ class State:
         append_space_if_valid(x-1, y-1)  # Diagonal left-up
         append_space_if_valid(x, y+1)  # Straight down
         append_space_if_valid(x, y-1)  # Straight up
+
         # TODO: DON'T FORGET CASTLING
+        castle = self._fen.split(" ")[2]
+        if self.friendly("K") in castle:
+            # King-side castle
+            # Test space open one and two right of king
+            # Test for check moving once right
+            # Test for check moving twice right
+            # Append valid castling move
+            pass
+        if self.friendly("Q") in castle:
+            # Queen-side castle
+            # Test space open one, two, and three right of king
+            # Test for check moving once left
+            # Test for check moving twice left
+            # Append valid castling move
+            pass
+
         if len(move_list) is 0:
             return None
         return move_list
