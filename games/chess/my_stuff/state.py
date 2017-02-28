@@ -1,9 +1,7 @@
 from my_stuff.board import Board
-from my_stuff.chess import get_draw_counter, get_en_passant_coordinates
+from my_stuff.chess import get_draw_counter, get_en_passant_coordinates, get_coordinates
 
 # TODO: King -- castling
-#   TODO: en passant
-# TODO: Knight
 # TODO: 'check' avoidance function
 # Note: Print in algebraic notation?? Don't want to do this.
 
@@ -34,8 +32,7 @@ class State:
                   WHITE IS STILL ON LOW RANKS. BLACK IS STILL ON HIGH RANKS.
 
             """
-        y = piece.rank - 1  # Account for list index offset
-        x = ord(piece.file) - 97  # 97 for ASCII offset
+        x, y = get_coordinates(piece.rank(), piece.file())
         while 0 <= x + dx < 8 and 0 <= y + dy < 8 and self._board[x + dx][y + dy] is "":
             # This should handle IndexOutOfBounds. If stuff goes wonky add an assert or try/catch here.
             space_status = self.test_space(x + dx, y + dy)
@@ -58,6 +55,60 @@ class State:
                 return "Open"
         else:
             return "Out of Bounds"
+
+    # TODO: Implement
+    def in_check(self):
+        #
+        king = next(p for p in self._pieces if type(p) is "King")
+        kx, ky = get_coordinates(king.rank(), king.file)
+
+        def space_threatens_check(x, y, piece):
+            if 0 <= x < new_board.width and 0 <= y < new_board.height:
+                if new_board[x][y] is enemy(piece):
+                    return True
+
+        def enemy(piece: str):
+            assert type(piece) is str
+            if self._color is "White":
+                return piece.lower()
+            elif self._color is "Black":
+                return piece.upper()
+
+        # Create new board
+        new_board = self._board.copy()
+
+        # Remove piece from original location
+
+        # Fill in new location
+
+        # Knights encircling the king
+        knight_mods = [(2, 1), (2, -1), (-1, -2), (1, -2), (-2, -1), (-2, 1), (-1, 2), (1, 2)]
+        for m in knight_mods:
+            dx, dy = m
+            if space_threatens_check(kx + dx, ky + dy, "N"):
+                return True
+
+        # Pawns diagonal and facing king
+        if self._color is "White":
+            dy = 1
+        elif self._color is "Black":
+            dy = -1
+        for dx in [-1, 1]:
+            if space_threatens_check(kx + dx, kx + dy, "P"):
+                return True
+
+        # Rooks, bishop, queen, by radiating a direction
+
+        # Enemy king
+        x_mods = [1, 0, -1]
+        y_mods = [1, 0, -1]
+        for dx in x_mods:
+            for dy in y_mods:
+                if space_threatens_check(kx + dx, ky + dy, "K"):
+                    return True
+
+        # No pieces threatening check!
+        return False
 
     def potential_moves(self):
         """ Cycles through all pieces and generates a list of moves that are valid
@@ -113,8 +164,7 @@ class State:
     def potential_king_moves(self, king):
         """ Tests all possible moves from given king and returns list of valid moves """
         assert king.type() is "King"
-        y = king.rank - 1  # Account for list index offset
-        x = ord(king.file) - 97  # ASCII value of 'a' is 97
+        x, y = get_coordinates(king.rank(), king.file())
         move_list = []
 
         def append_space_if_valid(x_file, y_rank):
@@ -139,8 +189,7 @@ class State:
     def potential_knight_moves(self, knight):
         """ Tests all possible moves from given knight and returns list of valid moves """
         assert knight.type() is "Knight"
-        y = knight.rank - 1  # Account for list index offset
-        x = ord(knight.file) - 97  # 96 for ASCII offset, 1 for index
+        x, y = get_coordinates(knight.rank(), knight.file())
         move_list = []
         mods = [(2, 1), (2, -1), (-1, -2), (1, -2), (-2, -1), (-2, 1), (-1, 2), (1, 2)]
         for m in mods:
@@ -156,8 +205,7 @@ class State:
     def potential_pawn_moves(self, pawn):
         """ Tests all possible moves from given pawn and returns list of valid moves """
         assert pawn.type() is "Pawn"
-        y = pawn.rank() - 1  # Account for list index offset
-        x = ord(pawn.file) - 97  # 96 for ASCII offset, 1 for index
+        x, y = get_coordinates(pawn.rank(), pawn.file())
         move_list = []
         if self._color is "White":
             dy = 1

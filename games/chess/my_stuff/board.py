@@ -10,6 +10,7 @@ class Board(list):
         self.generate_by(fen)
 
     def copy(self):
+        # TODO: Implement
         pass
 
     def generate_by(self, fen):

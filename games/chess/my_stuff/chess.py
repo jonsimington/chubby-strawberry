@@ -13,6 +13,10 @@ def get_en_passant_coordinates(fen: str):
     if target is "-":
         return None
     file, rank = target.split("")
-    y = rank - 1  # Account for list index offset
-    x = ord(file) - 97  # 97 for ASCII offset
+    return get_coordinates(rank, file)
+
+
+def get_coordinates(rank, file):
+    x = ord(file) - 97
+    y = rank - 1
     return tuple((x, y))
