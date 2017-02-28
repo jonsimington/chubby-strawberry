@@ -12,11 +12,12 @@ class State:
     def __init__(self, game, player):
         # Assert types? Have to import a bunch of weird SIG-Game code to do that.
         self._board = Board(game.fen)  # Have to change in future assignments
-        self._turns_to_draw = get_draw_counter(game.fen)
-        self._en_passant_target = get_en_passant_coordinates(game.fen)
         self._color = player.color()
         assert self._color in ["Black", "White"]
+        self._en_passant_target = get_en_passant_coordinates(game.fen)
+        self._fen = game.fen
         self._pieces = player.pieces()
+        self._turns_to_draw = get_draw_counter(game.fen)
 
     def add_direction(self, piece, moves, dx, dy):
         """ Used to generate legal moves for a given piece, in a single given direction.
@@ -117,6 +118,7 @@ class State:
         move_list = []
 
         def append_space_if_valid(x_file, y_rank):
+            # TODO: Add conditional for 'check'
             if self.test_space(x_file, y_rank) in ["Open", "Capturable"]:
                 # Test for "check"
                 move_list.append("%s %s %s" % (king.id, chr(x_file + 97), y_rank + 1))
@@ -140,7 +142,13 @@ class State:
         y = knight.rank - 1  # Account for list index offset
         x = ord(knight.file) - 97  # 96 for ASCII offset, 1 for index
         move_list = []
-        # TODO: go through board
+        mods = [(2, 1), (2, -1), (-1, -2), (1, -2), (-2, -1), (-2, 1), (-1, 2), (1, 2)]
+        for m in mods:
+            dx, dy = m
+            if 0 <= x+dx < self._board.width and 0 <= y+dy < self._board.height:
+                if self.test_space(x+dx, y+dy) in ["Open", "Capturable"]:
+                    # TODO: if not in check
+                    move_list.append("%s %s %s" % (knight.id, chr(x+dx + 97), y+dy + 1))
         if len(move_list) is 0:
             return None
         return move_list
@@ -155,18 +163,23 @@ class State:
             dy = 1
         elif self._color is "Black":
             dy = -1
+
+        # TODO: Add conditional for 'check'
         # Check immediate ahead is open
         if self.test_space(x, y+dy) is "Open":
             move_list.append("%s %s %s" % (pawn.id, chr(x + 97), y+dy + 1))
+
         # Check double-forward. Both on initial row, and both spaces immediately ahead are open.
         if (pawn.rank() is 2 and self._color is "White") or (pawn.rank() is 7 and self._color is "Black") and \
                 self.test_space(x, y+2*dy) is "Open" and self.test_space(x, y+dy) is "Open":
             move_list.append("%s %s %s" % (pawn.id, chr(x + 97), y+2*dy + 1))
+
         # Check for capturable units.
         if self.test_space(x-1, y+dy) is "Capturable":
             move_list.append("%s %s %s" % (pawn.id, chr(x-1 + 97), y+dy + 1))
         if self.test_space(x+1, y+dy) is "Capturable":
             move_list.append("%s %s %s" % (pawn.id, chr(x+1 + 97), y+dy + 1))
+
         # Check for en passant capture
         if (x+1, y+dy) == self._en_passant_target:
             move_list.append("%s %s %s" % (pawn.id, chr(x+1 + 97), y+dy + 1))
