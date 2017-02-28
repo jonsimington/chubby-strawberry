@@ -38,7 +38,7 @@ class State:
             space_status = self.test_space(x + dx, y + dy)
             assert space_status in ["Blocked", "Open", "Capturable"]
             # TODO: Conditional to prevent move in the event of 'check'
-            if space_status is not "Blocked":
+            if space_status is not "Blocked" and not self.in_check(x, y, x+dx, y+dy):
                 moves.append("%s %s %s" % (piece.id, chr(x + dx + 96 + 1), y + dy + 1))
             if space_status is not "Open":
                 break
@@ -56,11 +56,19 @@ class State:
         else:
             return "Out of Bounds"
 
-    # TODO: Implement
-    def in_check(self):
-        #
+    def in_check(self, xi, yi, xf, yf):
         king = next(p for p in self._pieces if type(p) is "King")
         kx, ky = get_coordinates(king.rank(), king.file)
+
+        # Create new board
+        new_board = self._board.copy()
+
+        # Remove piece from original location
+        marker = new_board[xi][yi]
+        new_board[xi][yi] = ""
+
+        # Fill in new location
+        new_board[xf][yf] = marker
 
         def space_threatens_check(x, y, piece):
             if 0 <= x < new_board.width and 0 <= y < new_board.height:
@@ -73,13 +81,6 @@ class State:
                 return piece.lower()
             elif self._color is "Black":
                 return piece.upper()
-
-        # Create new board
-        new_board = self._board.copy()
-
-        # Remove piece from original location
-
-        # Fill in new location
 
         # Knights encircling the king
         knight_mods = [(2, 1), (2, -1), (-1, -2), (1, -2), (-2, -1), (-2, 1), (-1, 2), (1, 2)]
@@ -167,11 +168,9 @@ class State:
         x, y = get_coordinates(king.rank(), king.file())
         move_list = []
 
-        def append_space_if_valid(x_file, y_rank):
-            # TODO: Add conditional for 'check'
-            if self.test_space(x_file, y_rank) in ["Open", "Capturable"]:
-                # Test for "check"
-                move_list.append("%s %s %s" % (king.id, chr(x_file + 97), y_rank + 1))
+        def append_space_if_valid(xf, yf):
+            if self.test_space(xf, yf) in ["Open", "Capturable"] and not self.in_check(x, y, xf, yf):
+                move_list.append("%s %s %s" % (king.id, chr(xf + 97), yf + 1))
 
         append_space_if_valid(x+1, y)  # Straight-right
         append_space_if_valid(x+1, y+1)  # Diagonal right-down
@@ -195,8 +194,7 @@ class State:
         for m in mods:
             dx, dy = m
             if 0 <= x+dx < self._board.width and 0 <= y+dy < self._board.height:
-                if self.test_space(x+dx, y+dy) in ["Open", "Capturable"]:
-                    # TODO: if not in check
+                if self.test_space(x+dx, y+dy) in ["Open", "Capturable"] and not self.in_check(x, y, x+dx, y+dy):
                     move_list.append("%s %s %s" % (knight.id, chr(x+dx + 97), y+dy + 1))
         if len(move_list) is 0:
             return None
@@ -212,27 +210,24 @@ class State:
         elif self._color is "Black":
             dy = -1
 
-        # TODO: Add conditional for 'check'
         # Check immediate ahead is open
-        if self.test_space(x, y+dy) is "Open":
+        if self.test_space(x, y+dy) is "Open" and not self.in_check(x, y, x, y+dy):
             move_list.append("%s %s %s" % (pawn.id, chr(x + 97), y+dy + 1))
 
         # Check double-forward. Both on initial row, and both spaces immediately ahead are open.
         if (pawn.rank() is 2 and self._color is "White") or (pawn.rank() is 7 and self._color is "Black") and \
                 self.test_space(x, y+2*dy) is "Open" and self.test_space(x, y+dy) is "Open":
-            move_list.append("%s %s %s" % (pawn.id, chr(x + 97), y+2*dy + 1))
+            if not self.in_check(x, y, x, y+2*dy):
+                move_list.append("%s %s %s" % (pawn.id, chr(x + 97), y+2*dy + 1))
 
-        # Check for capturable units.
-        if self.test_space(x-1, y+dy) is "Capturable":
-            move_list.append("%s %s %s" % (pawn.id, chr(x-1 + 97), y+dy + 1))
-        if self.test_space(x+1, y+dy) is "Capturable":
-            move_list.append("%s %s %s" % (pawn.id, chr(x+1 + 97), y+dy + 1))
+        # Check for capturable units including en passant target
+        if self.test_space(x-1, y+dy) is "Capturable" or (x-1, y+dy) is self._en_passant_target:
+            if not self.in_check(x, y, x-1, y+dy):
+                move_list.append("%s %s %s" % (pawn.id, chr(x-1 + 97), y+dy + 1))
+        if self.test_space(x+1, y+dy) is "Capturable" or (x+1, y+dy) is self._en_passant_target:
+            if not self.in_check(x, y, x+1, y+dy):
+                move_list.append("%s %s %s" % (pawn.id, chr(x+1 + 97), y+dy + 1))
 
-        # Check for en passant capture
-        if (x+1, y+dy) == self._en_passant_target:
-            move_list.append("%s %s %s" % (pawn.id, chr(x+1 + 97), y+dy + 1))
-        elif (x-1, y+dy) == self._en_passant_target:
-            move_list.append("%s %s %s" % (pawn.id, chr(x+1 + 97), y+dy + 1))
         if len(move_list) is 0:
             return None
         return move_list
