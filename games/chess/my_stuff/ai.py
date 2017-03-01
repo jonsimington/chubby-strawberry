@@ -1,6 +1,7 @@
 # This is where you build your AI for the Chess game.
 
 from joueur.base_ai import BaseAI
+from  my_stuff.state import State
 import random
 
 
@@ -73,10 +74,10 @@ class AI(BaseAI):
 
         # 4) make a random (and probably invalid) move.
         # TODO: Replace this function for assignment 1.
-        random_piece = random.choice(self.player.pieces)
-        random_file = chr(ord("a") + random.randrange(8))
-        random_rank = random.randrange(8) + 1
-        random_piece.move(random_file, random_rank)
+        current_state = State(self.game, self.player)
+        valid_moves = current_state.potential_moves()
+        piece, file, rank = random.choice(valid_moves)
+        piece.move(file, rank)
 
         return True  # to signify we are done with our turn.
 

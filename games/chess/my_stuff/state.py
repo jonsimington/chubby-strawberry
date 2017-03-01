@@ -2,7 +2,10 @@ from my_stuff.board import Board
 from my_stuff.chess import get_draw_counter, get_en_passant_coordinates, get_coordinates
 
 # TODO: King -- castling
+# TODO: Change functions to return 3-tuple (piece, rank, file)
 # Note: Print in algebraic notation?? Don't want to do this.
+# Note: Could probably write a "format move function" to replace all the tuple calls,
+#       in case I decide to change how to send the move back to the AI.
 
 
 class State:
@@ -38,7 +41,7 @@ class State:
             assert space_status in ["Blocked", "Open", "Capturable"]
             # TODO: Conditional to prevent move in the event of 'check'
             if space_status is not "Blocked" and not self.in_check(x, y, x+dx, y+dy):
-                moves.append("%s %s %s" % (piece.id, chr(x + dx + 96 + 1), y + dy + 1))
+                moves.append(tuple((piece, chr(x + dx + 96 + 1), y + dy + 1)))
             if space_status is not "Open":
                 break
 
@@ -111,6 +114,13 @@ class State:
             return piece.upper()
 
     def friendly(self, piece: str):
+        """
+        Used to quickly and easily refer to friendly pieces by their representative
+        character (FEN) regardless of player color.
+        :param piece: String (intended to be single character but not required).
+        :return: Returns the given string either in fully upper-case or lower-case
+                 depending on player color, to reflect Forsyth-Edwards Notation
+        """
         assert type(piece) is str
         if self._color is "White":
             return piece.upper()
@@ -118,14 +128,10 @@ class State:
             return piece.lower()
 
     def potential_moves(self):
-        """ Cycles through all pieces and generates a list of moves that are valid
-            given the current state of the game.
-
-            Returns: List of valid moves from current state
-            Return type: list
         """
-        # Cycle through _pieces
-        # Check each potential move
+        Cycles through all pieces and generates a list of moves that are valid given the current state of the game.
+        :return: List of valid moves from current state. tuple(piece, file, rank)
+        """
         valid_move_list = []
 
         def conditional_append(ol, el):
@@ -176,7 +182,7 @@ class State:
 
         def append_space_if_valid(xf, yf):
             if self.test_space(xf, yf) in ["Open", "Capturable"] and not self.in_check(x, y, xf, yf):
-                move_list.append("%s %s %s" % (king.id, chr(xf + 97), yf + 1))
+                move_list.append(tuple((king, chr(xf + 97), yf + 1)))
 
         append_space_if_valid(x+1, y)  # Straight-right
         append_space_if_valid(x+1, y+1)  # Diagonal right-down
@@ -218,7 +224,7 @@ class State:
             dx, dy = m
             if 0 <= x+dx < self._board.width and 0 <= y+dy < self._board.height:
                 if self.test_space(x+dx, y+dy) in ["Open", "Capturable"] and not self.in_check(x, y, x+dx, y+dy):
-                    move_list.append("%s %s %s" % (knight.id, chr(x+dx + 97), y+dy + 1))
+                    move_list.append(tuple((knight, chr(x+dx + 97), y+dy + 1)))
         if len(move_list) is 0:
             return None
         return move_list
@@ -235,21 +241,21 @@ class State:
 
         # Check immediate ahead is open
         if self.test_space(x, y+dy) is "Open" and not self.in_check(x, y, x, y+dy):
-            move_list.append("%s %s %s" % (pawn.id, chr(x + 97), y+dy + 1))
+            move_list.append(tuple((pawn, chr(x + 97), y+dy + 1)))
 
         # Check double-forward. Both on initial row, and both spaces immediately ahead are open.
         if (pawn.rank() is 2 and self._color is "White") or (pawn.rank() is 7 and self._color is "Black") and \
                 self.test_space(x, y+2*dy) is "Open" and self.test_space(x, y+dy) is "Open":
             if not self.in_check(x, y, x, y+2*dy):
-                move_list.append("%s %s %s" % (pawn.id, chr(x + 97), y+2*dy + 1))
+                move_list.append(tuple((pawn, chr(x + 97), y+2*dy + 1)))
 
         # Check for capturable units including en passant target
         if self.test_space(x-1, y+dy) is "Capturable" or (x-1, y+dy) is self._en_passant_target:
             if not self.in_check(x, y, x-1, y+dy):
-                move_list.append("%s %s %s" % (pawn.id, chr(x-1 + 97), y+dy + 1))
+                move_list.append(tuple((pawn, chr(x-1 + 97), y+dy + 1)))
         if self.test_space(x+1, y+dy) is "Capturable" or (x+1, y+dy) is self._en_passant_target:
             if not self.in_check(x, y, x+1, y+dy):
-                move_list.append("%s %s %s" % (pawn.id, chr(x+1 + 97), y+dy + 1))
+                move_list.append(tuple((pawn, chr(x+1 + 97), y+dy + 1)))
 
         if len(move_list) is 0:
             return None
