@@ -39,7 +39,6 @@ class State:
             # This should handle IndexOutOfBounds. If stuff goes wonky add an assert or try/catch here.
             space_status = self.test_space(x + dx, y + dy)
             assert space_status in ["Blocked", "Open", "Capturable"]
-            # TODO: Conditional to prevent move in the event of 'check'
             if space_status is not "Blocked" and not self.in_check(x, y, x+dx, y+dy):
                 moves.append(tuple((piece, chr(x + dx + 96 + 1), y + dy + 1)))
             if space_status is not "Open":
@@ -197,18 +196,15 @@ class State:
         castle = self._fen.split(" ")[2]
         if self.friendly("K") in castle:
             # King-side castle
-            # Test space open one and two right of king
-            # Test for check moving once right
-            # Test for check moving twice right
-            # Append valid castling move
-            pass
+            if self.test_space(x+1, y) is "Open" and self.test_space(x+2, y) is "Open":
+                if not self.in_check(x, y, x+1, y) and not self.in_check(x, y, x+2, y):
+                    move_list.append(tuple((king, chr(x+2 + 97), y + 1)))
+
         if self.friendly("Q") in castle:
             # Queen-side castle
-            # Test space open one, two, and three right of king
-            # Test for check moving once left
-            # Test for check moving twice left
-            # Append valid castling move
-            pass
+            if self.test_space(x - 1, y) is "Open" and self.test_space(x - 2, y) is "Open":
+                if not self.in_check(x, y, x - 1, y) and not self.in_check(x, y, x - 2, y):
+                    move_list.append(tuple((king, chr(x + 2 + 97), y + 1)))
 
         if len(move_list) is 0:
             return None
