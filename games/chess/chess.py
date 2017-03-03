@@ -12,7 +12,8 @@ def get_en_passant_coordinates(fen: str):
     target = fen.split(" ")[3]
     if target is "-":
         return None
-    file, rank = target.split("")
+    file, rank = list(target)
+    rank = int(rank)
     return get_coordinates(rank, file)
 
 

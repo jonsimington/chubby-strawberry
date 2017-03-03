@@ -1,9 +1,11 @@
 import unittest
+from games.chess.board import Board
 
 
 class PawnTestCase(unittest.TestCase):
     def setUp(self):
-        pass
+        fen = "8/8/8/8/1R6/5rR1/1P2P1P1/8 w KQkq -"
+        self.board = Board(fen)
 
     def test_pawn_forward_double_open(self):
         pass

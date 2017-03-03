@@ -76,7 +76,7 @@ class AI(BaseAI):
         # TODO: Replace this function for assignment 1.
         current_state = State(self.game, self.player)
         valid_moves = current_state.potential_moves()
-        [print(x[0].type + " R: " + x[2] + " F: " + x[1]) for x in valid_moves]
+        [print("%s R: %s F: %s " % (x[0].type, x[2], x[1])) for x in valid_moves]
         piece, file, rank = random.choice(valid_moves)
         piece.move(file, rank)
 
