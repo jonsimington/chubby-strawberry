@@ -1,7 +1,7 @@
-from board import Board
-from chess import get_draw_counter, get_en_passant_coordinates, get_coordinates
+from games.chess.board import Board
+from games.chess.chess import get_draw_counter, get_en_passant_coordinates, get_coordinates
 
-# TODO: King -- castling
+# TODO: Castling and en passant should be grabbed without FEN for future states
 # TODO: Change functions to return 3-tuple (piece, rank, file)
 # Note: Print in algebraic notation?? Don't want to do this.
 # Note: Could probably write a "format move function" to replace all the tuple calls,
@@ -192,7 +192,6 @@ class State:
         append_space_if_valid(x, y+1)  # Straight down
         append_space_if_valid(x, y-1)  # Straight up
 
-        # TODO: DON'T FORGET CASTLING
         castle = self._fen.split(" ")[2]
         if self.friendly("K") in castle:
             # King-side castle

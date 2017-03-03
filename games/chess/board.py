@@ -1,4 +1,3 @@
-
 class Board(list):
     def __init__(self, fen=None):
         """

@@ -1,5 +1,4 @@
 import unittest
-from my_stuff.state import *
 
 
 class PawnTestCase(unittest.TestCase):

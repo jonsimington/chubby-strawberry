@@ -1,7 +1,7 @@
 # This is where you build your AI for the Chess game.
 
 from joueur.base_ai import BaseAI
-from state import State
+from games.chess.state import State
 import random
 
 
