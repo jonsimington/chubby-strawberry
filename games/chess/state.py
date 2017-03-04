@@ -1,7 +1,7 @@
 from games.chess.board import Board
 from games.chess.chess import get_draw_counter, get_en_passant_coordinates, get_coordinates
 
-# TODO: Castling and en passant should be grabbed without FEN for future states
+# Note: Castling and en passant should be grabbed without FEN for future states
 # Note: Print in algebraic notation?? Don't want to do this.
 # Note: Could probably write a "format move function" to replace all the tuple calls,
 #       in case I decide to change how to send the move back to the AI.
@@ -46,18 +46,26 @@ class State:
             xc += dx
             yc += dy
 
-    def test_space(self, x, y):
-        if 0 <= x < self._board.width and 0 <= y < self._board.height:
-            if self._board[x][y] != "":
-                if (self._color == "White" and self._board[x][y].islower()) or \
-                        (self._color == "Black" and self._board[x][y].isupper()):
-                    return "Capturable"
-                else:
-                    return "Blocked"
-            else:
-                return "Open"
-        else:
-            return "Out of Bounds"
+    def enemy(self, piece: str):
+        assert type(piece) is str
+        if self._color == "White":
+            return piece.lower()
+        elif self._color == "Black":
+            return piece.upper()
+
+    def friendly(self, piece: str):
+        """
+        Used to quickly and easily refer to friendly pieces by their representative
+        character (FEN) regardless of player color.
+        :param piece: String (intended to be single character but not required).
+        :return: Returns the given string either in fully upper-case or lower-case
+                 depending on player color, to reflect Forsyth-Edwards Notation
+        """
+        assert type(piece) is str
+        if self._color == "White":
+            return piece.upper()
+        elif self._color == "Black":
+            return piece.lower()
 
     def in_check(self, xi, yi, xf, yf, move_king=False):
         king = next(p for p in self._pieces if p.type == "King")
@@ -129,27 +137,6 @@ class State:
         # No pieces threatening check!
         return False
 
-    def enemy(self, piece: str):
-        assert type(piece) is str
-        if self._color == "White":
-            return piece.lower()
-        elif self._color == "Black":
-            return piece.upper()
-
-    def friendly(self, piece: str):
-        """
-        Used to quickly and easily refer to friendly pieces by their representative
-        character (FEN) regardless of player color.
-        :param piece: String (intended to be single character but not required).
-        :return: Returns the given string either in fully upper-case or lower-case
-                 depending on player color, to reflect Forsyth-Edwards Notation
-        """
-        assert type(piece) is str
-        if self._color == "White":
-            return piece.upper()
-        elif self._color == "Black":
-            return piece.lower()
-
     def potential_moves(self):
         """
         Cycles through all pieces and generates a list of moves that are valid given the current state of the game.
@@ -208,7 +195,8 @@ class State:
         move_list = []
 
         def append_space_if_valid(xf, yf):
-            if self.test_space(xf, yf) in ["Open", "Capturable"] and not self.in_check(x, y, xf, yf, move_king=True):
+            space = self.test_space(xf, yf)
+            if (space == "Open" or space == "Capturable") and not self.in_check(x, y, xf, yf, move_king=True):
                 move_list.append(tuple((king, chr(xf + 97), yf + 1)))
 
         append_space_if_valid(x+1, y)  # Straight-right
@@ -223,15 +211,19 @@ class State:
         castle = self._fen.split(" ")[2]
         if self.friendly("K") in castle:
             # King-side castle
+            print("Test space %s %s: %s" % (chr(x+1+97), y+1, self.test_space(x+1, y)))
+            print("Test space %s %s: %s" % (chr(x+2+97), y+1, self.test_space(x+2, y)))
             if self.test_space(x+1, y) == "Open" and self.test_space(x+2, y) == "Open":
                 if not self.in_check(x, y, x+1, y, move_king=True) and not self.in_check(x, y, x+2, y, move_king=True):
                     move_list.append(tuple((king, chr(x+2 + 97), y + 1)))
 
         if self.friendly("Q") in castle:
             # Queen-side castle
-            if self.test_space(x - 1, y) == "Open" and self.test_space(x - 2, y) == "Open":
-                if not self.in_check(x, y, x - 1, y, move_king=True) and not self.in_check(x, y, x - 2, y, move_king=True):
-                    move_list.append(tuple((king, chr(x + 2 + 97), y + 1)))
+            if self.test_space(x - 1, y) == "Open" and self.test_space(x - 2, y) == "Open" \
+                    and self.test_space(x - 3, y) == "Open" and not self.in_check(x, y, x - 1, y, move_king=True) \
+                    and not self.in_check(x, y, x - 2, y, move_king=True):
+                print("Q - Appending %s %s" % (chr(x-2 + 97), y+1))
+                move_list.append(tuple((king, chr(x - 2 + 97), y + 1)))
 
         if len(move_list) == 0:
             return None
@@ -327,3 +319,16 @@ class State:
         self.add_direction(queen, move_list, -1, 0)  # Straight left
 
         return move_list
+
+    def test_space(self, x, y):
+        if 0 <= x < self._board.width and 0 <= y < self._board.height:
+            if self._board[x][y] != "":
+                if (self._color == "White" and self._board[x][y].islower()) or \
+                        (self._color == "Black" and self._board[x][y].isupper()):
+                    return "Capturable"
+                else:
+                    return "Blocked"
+            else:
+                return "Open"
+        else:
+            return "Out of Bounds"
