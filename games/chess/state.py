@@ -174,27 +174,23 @@ class State:
                 pawn_moves = self.potential_pawn_moves(p)
                 conditional_append(valid_move_list, pawn_moves)
             elif piece_type == "King":
-                print("Made it into if King")
                 king_moves = self.potential_king_moves(p)
                 conditional_append(valid_move_list, king_moves)
             # elif piece_type == "Knight":
             #     print("Made it into if Knight")
             #     knight_moves = self.potential_knight_moves(p)
             #     conditional_append(valid_move_list, knight_moves)
-            # elif piece_type == "Rook":
-            #     print("Made it into if Rook")
-            #     rook_moves = self.potential_rook_moves(p)
-            #     print("Exited potential_rook_moves")
-            #     conditional_append(valid_move_list, rook_moves)
-            # elif piece_type == "Bishop":
-            #     print("Made it into if Bishop")
-            #     bishop_moves = self.potential_bishop_moves(p)
-            #     conditional_append(valid_move_list, bishop_moves)
+            elif piece_type == "Rook":
+                rook_moves = self.potential_rook_moves(p)
+                conditional_append(valid_move_list, rook_moves)
+            elif piece_type == "Bishop":
+                print("Made it into if Bishop")
+                bishop_moves = self.potential_bishop_moves(p)
+                conditional_append(valid_move_list, bishop_moves)
 
         assert len(valid_move_list) > 0
         return valid_move_list
 
-    # TODO: Still needs to be done.
     def potential_bishop_moves(self, bishop):
         """ Tests all possible moves from given bishop and returns list of valid moves """
         assert bishop.type == "Bishop"
@@ -307,7 +303,6 @@ class State:
             return None
         return move_list
 
-    # TODO: Still needs to be done.
     def potential_rook_moves(self, rook):
         """ Tests all possible moves from given rook and returns list of valid moves """
         assert rook.type == "Rook"
