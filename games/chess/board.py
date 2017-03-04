@@ -45,3 +45,8 @@ class Board(list):
         # Transpose to allow board[x][y] indexing instead of board[y][x]
         placeholder = list(map(list, zip(*placeholder)))
         [self.append(x) for x in placeholder]
+
+    def nice_print(self):
+        print("========================")
+        [print(x) for x in self]
+        print("========================")

@@ -2,7 +2,6 @@ from games.chess.board import Board
 from games.chess.chess import get_draw_counter, get_en_passant_coordinates, get_coordinates
 
 # TODO: Castling and en passant should be grabbed without FEN for future states
-# TODO: Change functions to return 3-tuple (piece, rank, file)
 # Note: Print in algebraic notation?? Don't want to do this.
 # Note: Could probably write a "format move function" to replace all the tuple calls,
 #       in case I decide to change how to send the move back to the AI.
@@ -34,21 +33,22 @@ class State:
                   WHITE IS STILL ON LOW RANKS. BLACK IS STILL ON HIGH RANKS.
 
             """
-        x, y = get_coordinates(piece.rank, piece.file)
-        while 0 <= x + dx < 8 and 0 <= y + dy < 8 and self._board[x + dx][y + dy] == "":
+        xi, yi = get_coordinates(piece.rank, piece.file)
+        xc, yc = xi, yi
+        while 0 <= xc + dx < 8 and 0 <= yc + dy < 8:
             # This should handle IndexOutOfBounds. If stuff goes wonky add an assert or try/catch here.
-            space_status = self.test_space(x + dx, y + dy)
+            space_status = self.test_space(xc + dx, yc + dy)
             assert space_status in ["Blocked", "Open", "Capturable"]
-            if space_status is not "Blocked" and not self.in_check(x, y, x+dx, y+dy):
-                moves.append(tuple((piece, chr(x + dx + 96 + 1), y + dy + 1)))
-            if space_status is not "Open":
+            if space_status != "Blocked" and not self.in_check(xi, yi, xc+dx, yc+dy):
+                moves.append(tuple((piece, chr(xc + dx + 96 + 1), yc + dy + 1)))
+            if space_status != "Open":
                 break
-            x += dx
-            y += dy
+            xc += dx
+            yc += dy
 
     def test_space(self, x, y):
         if 0 <= x < self._board.width and 0 <= y < self._board.height:
-            if self._board[x][y] is not "":
+            if self._board[x][y] != "":
                 if (self._color == "White" and self._board[x][y].islower()) or \
                         (self._color == "Black" and self._board[x][y].isupper()):
                     return "Capturable"
@@ -59,23 +59,40 @@ class State:
         else:
             return "Out of Bounds"
 
-    def in_check(self, xi, yi, xf, yf):
+    def in_check(self, xi, yi, xf, yf, move_king=False):
         king = next(p for p in self._pieces if p.type == "King")
-        kx, ky = get_coordinates(king.rank, king.file)
+        if move_king is False:
+            kx, ky = get_coordinates(king.rank, king.file)
+        else:
+            kx, ky = xf, yf
 
-        # Create new board
         new_board = self._board.copy()
 
-        # Remove piece from original location
+        # Move piece indicator
         marker = new_board[xi][yi]
         new_board[xi][yi] = ""
-
-        # Fill in new location
         new_board[xf][yf] = marker
+
+        def direction_threatens_check(dx, dy):
+            x = kx
+            y = ky
+            if dx != 0 and dy != 0:
+                enemies = [self.enemy("Q"), self.enemy("B")]
+            else:
+                enemies = [self.enemy("Q"), self.enemy("R")]
+            while 0 <= x + dx < 8 and 0 <= y + dy < 8:
+                if new_board[x + dx][y + dy] != "":
+                    if new_board[x + dx][y + dy] in enemies:
+                        return True
+                    else:
+                        return False
+                x += dx
+                y += dy
+            return False
 
         def space_threatens_check(x, y, piece):
             if 0 <= x < new_board.width and 0 <= y < new_board.height:
-                if new_board[x][y] is self.enemy(piece):
+                if new_board[x][y] == self.enemy(piece):
                     return True
 
         # Knights encircling the king
@@ -91,10 +108,15 @@ class State:
         elif self._color == "Black":
             dy = -1
         for dx in [-1, 1]:
-            if space_threatens_check(kx + dx, kx + dy, "P"):
+            if space_threatens_check(kx + dx, ky + dy, "P"):
                 return True
 
         # Rooks, bishop, queen, by radiating a direction
+        dir_mods = [-1, 0, 1]
+        for dx in dir_mods:
+            for dy in dir_mods:
+                if direction_threatens_check(dx, dy):
+                    return True
 
         # Enemy king
         x_mods = [1, 0, -1]
@@ -145,36 +167,34 @@ class State:
         assert len(self._pieces) > 0
         for p in self._pieces:
             piece_type = p.type.strip('\n')
-            # print(p.type)
-            if piece_type == "King":
+            if piece_type == "Queen":  # DONE: Confirmed working.
+                queen_moves = self.potential_queen_moves(p)
+                conditional_append(valid_move_list, queen_moves)
+            elif piece_type == "Pawn":
+                pawn_moves = self.potential_pawn_moves(p)
+                conditional_append(valid_move_list, pawn_moves)
+            elif piece_type == "King":
                 print("Made it into if King")
                 king_moves = self.potential_king_moves(p)
                 conditional_append(valid_move_list, king_moves)
-            elif piece_type == "Queen":
-                print("Made it into if Queen")
-                queen_moves = self.potential_queen_moves(p)
-                conditional_append(valid_move_list, queen_moves)
-            elif piece_type == "Knight":
-                print("Made it into if Knight")
-                knight_moves = self.potential_knight_moves(p)
-                conditional_append(valid_move_list, knight_moves)
-            elif piece_type == "Rook":
-                print("Made it into if Rook")
-                rook_moves = self.potential_rook_moves(p)
-                print("Exited potential_rook_moves")
-                conditional_append(valid_move_list, rook_moves)
-            elif piece_type == "Bishop":
-                print("Made it into if Bishop")
-                bishop_moves = self.potential_bishop_moves(p)
-                conditional_append(valid_move_list, bishop_moves)
-            elif piece_type == "Pawn":
-                print("Made it into if Pawn")
-                pawn_moves = self.potential_pawn_moves(p)
-                conditional_append(valid_move_list, pawn_moves)
+            # elif piece_type == "Knight":
+            #     print("Made it into if Knight")
+            #     knight_moves = self.potential_knight_moves(p)
+            #     conditional_append(valid_move_list, knight_moves)
+            # elif piece_type == "Rook":
+            #     print("Made it into if Rook")
+            #     rook_moves = self.potential_rook_moves(p)
+            #     print("Exited potential_rook_moves")
+            #     conditional_append(valid_move_list, rook_moves)
+            # elif piece_type == "Bishop":
+            #     print("Made it into if Bishop")
+            #     bishop_moves = self.potential_bishop_moves(p)
+            #     conditional_append(valid_move_list, bishop_moves)
 
         assert len(valid_move_list) > 0
         return valid_move_list
 
+    # TODO: Still needs to be done.
     def potential_bishop_moves(self, bishop):
         """ Tests all possible moves from given bishop and returns list of valid moves """
         assert bishop.type == "Bishop"
@@ -183,7 +203,7 @@ class State:
         self.add_direction(bishop, move_list, -1, 1)
         self.add_direction(bishop, move_list, 1, -1)
         self.add_direction(bishop, move_list, -1, -1)
-        if len(move_list) is 0:
+        if len(move_list) == 0:
             return None
         return move_list
 
@@ -194,7 +214,7 @@ class State:
         move_list = []
 
         def append_space_if_valid(xf, yf):
-            if self.test_space(xf, yf) in ["Open", "Capturable"] and not self.in_check(x, y, xf, yf):
+            if self.test_space(xf, yf) in ["Open", "Capturable"] and not self.in_check(x, y, xf, yf, move_king=True):
                 move_list.append(tuple((king, chr(xf + 97), yf + 1)))
 
         append_space_if_valid(x+1, y)  # Straight-right
@@ -219,10 +239,11 @@ class State:
                 if not self.in_check(x, y, x - 1, y) and not self.in_check(x, y, x - 2, y):
                     move_list.append(tuple((king, chr(x + 2 + 97), y + 1)))
 
-        if len(move_list) is 0:
+        if len(move_list) == 0:
             return None
         return move_list
 
+    # TODO: Still needs to be done.
     def potential_knight_moves(self, knight):
         """ Tests all possible moves from given knight and returns list of valid moves """
         assert knight.type == "Knight"
@@ -234,7 +255,7 @@ class State:
             if 0 <= x+dx < self._board.width and 0 <= y+dy < self._board.height:
                 if self.test_space(x+dx, y+dy) in ["Open", "Capturable"] and not self.in_check(x, y, x+dx, y+dy):
                     move_list.append(tuple((knight, chr(x+dx + 97), y+dy + 1)))
-        if len(move_list) is 0:
+        if len(move_list) == 0:
             return None
         return move_list
 
@@ -248,28 +269,45 @@ class State:
         elif self._color == "Black":
             dy = -1
 
+        def add_pawn_move(xf, yf):
+            f = chr(xf + 97)
+            r = yf + 1
+            if (self._color == "White" and r == 8) or (self._color == "Black" and r == 1):
+                promotions = ["Bishop", "Rook", "Knight", "Queen"]
+                [move_list.append(tuple((pawn, f, r, p))) for p in promotions]
+            else:
+                move_list.append(tuple((pawn, f, r)))
+
         # Check immediate ahead is open
         if self.test_space(x, y+dy) == "Open" and not self.in_check(x, y, x, y+dy):
-            move_list.append(tuple((pawn, chr(x + 97), y+dy + 1)))
+            add_pawn_move(x, y+dy)
 
         # Check double-forward. Both on initial row, and both spaces immediately ahead are open.
-        if (pawn.rank is 2 and self._color == "White") or (pawn.rank is 7 and self._color == "Black") and \
-                self.test_space(x, y+2*dy) == "Open" and self.test_space(x, y+dy) == "Open":
-            if not self.in_check(x, y, x, y+2*dy):
-                move_list.append(tuple((pawn, chr(x + 97), y+2*dy + 1)))
+        if (pawn.rank == 2 and self._color == "White") or (pawn.rank == 7 and self._color == "Black"):
+            if self.test_space(x, y+2*dy) == "Open" and self.test_space(x, y+dy) == "Open":
+                if not self.in_check(x, y, x, y+2*dy):
+                    add_pawn_move(x, y+2*dy)
 
         # Check for capturable units including en passant target
-        if self.test_space(x-1, y+dy) == "Capturable" or (x-1, y+dy) is self._en_passant_target:
+        if self.test_space(x-1, y+dy) == "Capturable":  # or (x-1, y+dy) == self._en_passant_target:
             if not self.in_check(x, y, x-1, y+dy):
-                move_list.append(tuple((pawn, chr(x-1 + 97), y+dy + 1)))
-        if self.test_space(x+1, y+dy) == "Capturable" or (x+1, y+dy) is self._en_passant_target:
+                add_pawn_move(x-1, y+dy)
+        if self.test_space(x+1, y+dy) == "Capturable":  # or (x+1, y+dy) == self._en_passant_target:
             if not self.in_check(x, y, x+1, y+dy):
-                move_list.append(tuple((pawn, chr(x+1 + 97), y+dy + 1)))
+                add_pawn_move(x+1, y+dy)
 
-        if len(move_list) is 0:
+        if (x-1, y+dy) == self._en_passant_target:
+            if not self.in_check(x, y, x-1, y+dy):
+                add_pawn_move(x-1, y+dy)
+        if (x+1, y+dy) == self._en_passant_target:
+            if not self.in_check(x, y, x+1, y+dy):
+                add_pawn_move(x+1, y+dy)
+
+        if len(move_list) == 0:
             return None
         return move_list
 
+    # TODO: Still needs to be done.
     def potential_rook_moves(self, rook):
         """ Tests all possible moves from given rook and returns list of valid moves """
         assert rook.type == "Rook"
@@ -278,11 +316,11 @@ class State:
         self.add_direction(rook, move_list, 0, -1)  # Up
         self.add_direction(rook, move_list, 1, 0)  # Right
         self.add_direction(rook, move_list, -1, 0)  # Left
-        if len(move_list) is 0:
+        if len(move_list) == 0:
             return None
         return move_list
 
-    def potential_queen_moves(self, queen):
+    def potential_queen_moves(self, queen):  # DONE: Confirmed working.
         """ Tests all possible moves from given queen and returns list of valid moves """
         assert queen.type == "Queen"
         move_list = []

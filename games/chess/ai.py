@@ -76,9 +76,14 @@ class AI(BaseAI):
         # TODO: Replace this function for assignment 1.
         current_state = State(self.game, self.player)
         valid_moves = current_state.potential_moves()
-        [print("%s R: %s F: %s " % (x[0].type, x[2], x[1])) for x in valid_moves]
-        piece, file, rank = random.choice(valid_moves)
-        piece.move(file, rank)
+        # [print("%s R: %s F: %s " % (x[0].type, x[2], x[1])) for x in valid_moves]
+        choice = random.choice(valid_moves)
+        if len(choice) == 3:
+            piece, file, rank = choice
+            piece.move(file, rank)
+        elif len(choice) == 4:
+            piece, file, rank, promotion = choice
+            piece.move(file, rank, promotion)
 
         return True  # to signify we are done with our turn.
 
