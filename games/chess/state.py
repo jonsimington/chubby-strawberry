@@ -176,15 +176,13 @@ class State:
             elif piece_type == "King":
                 king_moves = self.potential_king_moves(p)
                 conditional_append(valid_move_list, king_moves)
-            # elif piece_type == "Knight":
-            #     print("Made it into if Knight")
-            #     knight_moves = self.potential_knight_moves(p)
-            #     conditional_append(valid_move_list, knight_moves)
+            elif piece_type == "Knight":
+                knight_moves = self.potential_knight_moves(p)
+                conditional_append(valid_move_list, knight_moves)
             elif piece_type == "Rook":
                 rook_moves = self.potential_rook_moves(p)
                 conditional_append(valid_move_list, rook_moves)
             elif piece_type == "Bishop":
-                print("Made it into if Bishop")
                 bishop_moves = self.potential_bishop_moves(p)
                 conditional_append(valid_move_list, bishop_moves)
 
@@ -226,20 +224,19 @@ class State:
         if self.friendly("K") in castle:
             # King-side castle
             if self.test_space(x+1, y) == "Open" and self.test_space(x+2, y) == "Open":
-                if not self.in_check(x, y, x+1, y) and not self.in_check(x, y, x+2, y):
+                if not self.in_check(x, y, x+1, y, move_king=True) and not self.in_check(x, y, x+2, y, move_king=True):
                     move_list.append(tuple((king, chr(x+2 + 97), y + 1)))
 
         if self.friendly("Q") in castle:
             # Queen-side castle
             if self.test_space(x - 1, y) == "Open" and self.test_space(x - 2, y) == "Open":
-                if not self.in_check(x, y, x - 1, y) and not self.in_check(x, y, x - 2, y):
+                if not self.in_check(x, y, x - 1, y, move_king=True) and not self.in_check(x, y, x - 2, y, move_king=True):
                     move_list.append(tuple((king, chr(x + 2 + 97), y + 1)))
 
         if len(move_list) == 0:
             return None
         return move_list
 
-    # TODO: Still needs to be done.
     def potential_knight_moves(self, knight):
         """ Tests all possible moves from given knight and returns list of valid moves """
         assert knight.type == "Knight"
@@ -249,7 +246,8 @@ class State:
         for m in mods:
             dx, dy = m
             if 0 <= x+dx < self._board.width and 0 <= y+dy < self._board.height:
-                if self.test_space(x+dx, y+dy) in ["Open", "Capturable"] and not self.in_check(x, y, x+dx, y+dy):
+                space = self.test_space(x+dx, y+dy)
+                if (space == "Open" or space == "Capturable") and not self.in_check(x, y, x+dx, y+dy):
                     move_list.append(tuple((knight, chr(x+dx + 97), y+dy + 1)))
         if len(move_list) == 0:
             return None
