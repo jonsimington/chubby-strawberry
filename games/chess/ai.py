@@ -72,19 +72,20 @@ class AI(BaseAI):
         # 3) print how much time remaining this AI has to calculate moves
         print("Time Remaining: " + str(self.player.time_remaining) + " ns")
 
-        # 4) make a random (and probably invalid) move.
-        # TODO: Replace this function for assignment 1.
+        # 4) Make a random valid move
         current_state = State(self.game, self.player)
         valid_moves = current_state.potential_moves()
-        # [print("%s R: %s F: %s " % (x[0].type, x[2], x[1])) for x in valid_moves]
+        # [print("%s to %s %s " % (x[0].type, x[2], x[1])) for x in valid_moves]
         choice = random.choice(valid_moves)
         if len(choice) == 3:
             piece, file, rank = choice
+            [print("%s to %s %s" % (x[0].type, x[2], x[1])) for x in valid_moves if x[0].id == piece.id]
             piece.move(file, rank)
         elif len(choice) == 4:
             piece, file, rank, promotion = choice
+            [print("%s to %s %s" % (x[0].type, x[2], x[1])) for x in valid_moves if x[0].id == piece.id]
             piece.move(file, rank, promotion)
-
+        print("\n")
         return True  # to signify we are done with our turn.
 
     def print_current_board(self):
