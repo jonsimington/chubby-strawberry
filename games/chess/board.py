@@ -1,3 +1,6 @@
+from games.chess.chess import get_coordinates
+
+
 class Board(list):
     def __init__(self, fen=None):
         """
@@ -45,6 +48,22 @@ class Board(list):
         # Transpose to allow board[x][y] indexing instead of board[y][x]
         placeholder = list(map(list, zip(*placeholder)))
         [self.append(x) for x in placeholder]
+
+    def move_piece(self, xi=None, yi=None, xf=None, yf=None, ri=None, fi=None, rf=None, ff=None):
+        if xi is not None and yi is not None and xf is not None and yf is not None:
+            self.move_piece_xy(xi, yi, xf, yf)
+        elif ri is not None and fi is not None and rf is not None and ff is not None:
+            self.move_piece_rf(ri, fi, rf, ff)
+
+    def move_piece_rf(self, ri, fi, rf, ff):
+        xi, yi = get_coordinates(ri, fi)
+        xf, yf = get_coordinates(rf, ff)
+        self.move_piece_xy(xi, yi, xf, yf)
+
+    def move_piece_xy(self, xi, yi, xf, yf):
+        marker = self[xi][yi]
+        self[xi][yi] = ""
+        self[xf][yf] = marker
 
     def nice_print(self):
         print("========================")

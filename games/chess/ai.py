@@ -1,8 +1,11 @@
 # This is where you build your AI for the Chess game.
 
-from joueur.base_ai import BaseAI
+from collections import namedtuple
 from games.chess.state import State
+from joueur.base_ai import BaseAI
 import random
+
+infinity = float('inf')
 
 
 class AI(BaseAI):
@@ -33,6 +36,7 @@ class AI(BaseAI):
         # replace with your game updated logic
         # Counter to keep track of 50 turn of no-conflict expiration goes here
 
+    # noinspection PyMethodOverriding
     def end(self, won, reason):
         """ This is called when the game ends, you can clean up your data and
         dump files here if need be.
@@ -73,8 +77,8 @@ class AI(BaseAI):
         print("Time Remaining: " + str(self.player.time_remaining) + " ns")
 
         # 4) Make a random valid move
-        current_state = State(self.game, self.player)
-        valid_moves = current_state.potential_moves()
+        current_state = State(self.game)
+        valid_moves = current_state.moves
         # [print("%s to %s %s " % (x[0].type, x[2], x[1])) for x in valid_moves]
         choice = random.choice(valid_moves)
         if len(choice) == 3:
@@ -95,7 +99,6 @@ class AI(BaseAI):
 
         # iterate through the range in reverse order
         for r in range(9, -2, -1):
-            output = ""
             if r == 9 or r == 0:
                 # then the top or bottom of the board
                 output = "   +------------------------+"
@@ -134,4 +137,68 @@ class AI(BaseAI):
 
                 output += "|"
             print(output)
+
+
+# noinspection PyUnboundLocalVariable
+def mini_max_decision(state):  # returns an action
+    """ Decides what move to  """
+
+    player = to_move(state)
+
+    # noinspection PyShadowingNames
+    def max_value(state, depth, max_depth):  # returns a utility value
+        """ Selects the maximum value for the utility of a state resulting from a move by the AI player """
+        if terminal_test(state) or depth == max_depth:
+            return utility(state, player)
+        v = -infinity
+        for a in actions(state):
+            v = max(v, min_value(result(state, a), depth + 1, max_depth))
+        return v
+
+    # noinspection PyShadowingNames
+    def min_value(state, depth, max_depth):  # returns a utility value
+        """ Selects the minimum value for the utility of a state resulting from a move by the enemy player """
+        if terminal_test(state) or depth == max_depth:
+            return utility(state, player)
+        v = infinity
+        for a in actions(state):
+            v = min(v, max_value(result(state, a), depth + 1, max_depth))
+        return v
+
+    for max_depth in range(3):  # TODO: Figure out best depth
+        max_utility = -infinity
+        for a in actions(state):
+            min_utility = min_value(result(state, a), depth=0, max_depth=max_depth)
+            if min_utility > max_utility:  # Guaranteed to trigger on first completion of min_value
+                max_utility = min_utility
+                best_action = a
+        last_depth_best = best_action
+    return last_depth_best
+
+
+def actions(state):
+    """"Return a list of the allowable moves at this point."""
+    return state.moves
+
+
+def result(state, move):
+    """Return the state that results from making a move from a state."""
+    if move not in state.moves:
+        return state
+    return State(state.game, parent=state, action=move)
+
+
+def terminal_test(state):
+    """"Return True if this is a final state for the game."""
+    return state.terminal
+
+
+def to_move(state):
+    """Return the player whose move it is in this state."""
+    return state.to_move
+
+
+def utility(state, player):
+    """"Return the value of this final state to player."""
+    return state.utility if player == state.to_move else -state.utility
 
