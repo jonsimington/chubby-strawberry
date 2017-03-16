@@ -1,3 +1,4 @@
+from collections import namedtuple
 from games.chess.board import Board
 from games.chess.chess import get_coordinates, get_draw_counter, get_en_passant_coordinates
 
@@ -5,6 +6,9 @@ from games.chess.chess import get_coordinates, get_draw_counter, get_en_passant_
 # Note: Print in algebraic notation?? Don't want to do this.
 # Note: Could probably write a "format move function" to replace all the tuple calls,
 #       in case I decide to change how to send the move back to the AI.
+
+Move = namedtuple("Move", "piece, file, rank, promotion, capture")
+Move.__new__.__defaults__ = (False, None)
 
 
 # noinspection PyShadowingNames,PyProtectedMember
@@ -70,9 +74,9 @@ class State:
                     except ValueError:  # Will trigger if the move was not in the list to begin with
                         pass
 
-        self._utility = self.__find_utility()
         self._moves = self.__potential_moves()
         self._game = game
+        self._utility = self.__find_utility()
 
     # ----------------- PROPERTIES -----------------
 
@@ -94,7 +98,7 @@ class State:
 
     @property
     def utility(self):  # Not sure how to evaluate things
-        raise NotImplementedError
+        return self._utility
 
     # -------------- PUBLIC FUNCTIONS --------------
 
@@ -103,47 +107,12 @@ class State:
         return State(self._game, parent=self, action=action)
 
     # ----------------- IMPLEMENT ------------------
-    def __find_utility(self):
+    def __find_utility(self):  # TODO: Implement
         raise NotImplementedError
         # if self.__in_checkmate():
         #     return -1
         # elif self.__test_draw():
         #     return 0
-
-    def __test_draw(self):
-        return (not self.__in_check() and len(self.moves) == 0) \
-                or self._turns_to_draw == 0 \
-                or self.__insufficient_material()
-
-    def __insufficient_material(self):
-        fp = [p.type for p in self._friendly_pieces]
-        ep = [p.type for p in self._enemy_pieces]
-
-        # Test for KBk with B on either side
-        if (len(fp) is 1 and len(ep) is 2 and "Bishop" in ep) \
-                or (len(ep) is 1 and len(fp) is 2 and "Bishop" in fp):
-            return True
-
-        # Test for Kk
-        elif len(fp) is 1 and len(ep) is 1:
-            return True
-
-        # Test for KNk with N on either side
-        elif (len(fp) is 1 and len(ep) is 2 and "Knight" in ep) \
-                or (len(ep) is 1 and len(fp) is 2 and "Knight" in fp):
-            return True
-
-        # Test for KBkb with opposing bishops on the same color
-        elif len(fp) is 2 and len(ep) is 2 and "Bishop" in ep and "Bishop" in fp:  # Supposed to specify if on
-            for p in self._friendly_pieces:
-                if p.type == "Bishop":
-                    for q in self._enemy_pieces:
-                        if q.type == "Bishop":
-                            if p.space_color == q.space_color:
-                                return True
-                            break
-                    break
-        return False
 
     # ----------------- PRIVATE FUNCTIONS -----------------
     def __add_direction(self, piece, moves, dx, dy):
@@ -159,16 +128,19 @@ class State:
                   the standard representation of a chess board (origin 1-A in the bottom left)
 
                   WHITE IS STILL ON LOW RANKS. BLACK IS STILL ON HIGH RANKS.
+        """
 
-            """
         xi, yi = get_coordinates(piece.rank, piece.file)
         xc, yc = xi, yi
         while 0 <= xc + dx < 8 and 0 <= yc + dy < 8:
             # This should handle IndexOutOfBounds. If stuff goes wonky add an assert or try/catch here.
             space_status = self.__test_space(xc + dx, yc + dy)
             assert space_status in ["Blocked", "Open", "Capturable"]
-            if space_status != "Blocked" and not self.__in_check(xi, yi, xc+dx, yc+dy):
-                moves.append(tuple((piece, chr(xc + dx + 96 + 1), yc + dy + 1)))
+            if space_status == "Open" and not self.__in_check(xi, yi, xc+dx, yc+dy):
+                moves.append(Move(piece, file=chr(xc + dx + 96 + 1), rank=(yc + dy + 1)))
+            elif space_status == "Capturable" and not self.__in_check(xi, yi, xc+dx, yc+dy):
+                moves.append(Move(piece, file=chr(xc + dx + 96 + 1), rank=(yc + dy + 1),
+                                  capture=self._board[xc+dx][yc+dy]))
             if space_status != "Open":
                 break
             xc += dx
@@ -268,6 +240,23 @@ class State:
     def __in_checkmate(self):
         return self.__in_check() and len(self.moves) == 0
 
+    def __insufficient_material(self):
+        fp = [p.type for p in self._friendly_pieces]
+        ep = [p.type for p in self._enemy_pieces]
+
+        # Test for Kk
+        if len(fp) is 1 and len(ep) is 1:
+            return True
+
+        # Test for KNk with N on either side
+        elif (len(fp) is 1 and len(ep) is 2 and "Knight" in ep) \
+                or (len(ep) is 1 and len(fp) is 2 and "Knight" in fp):
+            return True  # Test for KBk with B on either side
+
+        elif (len(fp) is 1 and len(ep) is 2 and "Bishop" in ep) \
+                or (len(ep) is 1 and len(fp) is 2 and "Bishop" in fp):
+            return True
+
     def __potential_moves(self):
         """
         Cycles through all pieces and generates a list of moves that are valid given the current state of the game.
@@ -326,8 +315,10 @@ class State:
 
         def append_space_if_valid(xf, yf):
             space = self.__test_space(xf, yf)
-            if (space == "Open" or space == "Capturable") and not self.__in_check(x, y, xf, yf, move_king=True):
-                move_list.append(tuple((king, chr(xf + 97), yf + 1)))
+            if space == "Open" and not self.__in_check(x, y, xf, yf, move_king=True):
+                move_list.append(Move(king, file=chr(xf + 97), rank=(yf + 1)))
+            elif space == "Capturable" and not self.__in_check(x, y, xf, yf, move_king=True):
+                move_list.append(Move(king, file=chr(xf + 97), rank=(yf + 1), capture=self._board[xf][yf]))
 
         append_space_if_valid(x+1, y)  # Straight-right
         append_space_if_valid(x+1, y+1)  # Diagonal right-down
@@ -345,7 +336,7 @@ class State:
             if self.__test_space(x+1, y) == "Open" and self.__test_space(x+2, y) == "Open":
                 if not self.__in_check(x, y, x+1, y, move_king=True) and \
                         not self.__in_check(x, y, x+2, y, move_king=True):
-                    move_list.append(tuple((king, chr(x+2 + 97), y + 1)))
+                    move_list.append(Move(king, file=chr(x+2 + 97), rank=(y + 1)))
 
         if self.__friendly("Q") in self._castle:
             # Queen-side castle
@@ -353,7 +344,7 @@ class State:
                     and self.__test_space(x - 3, y) == "Open" and not self.__in_check(x, y, x - 1, y, move_king=True) \
                     and not self.__in_check(x, y, x - 2, y, move_king=True):
                 print("Q - Appending %s %s" % (chr(x-2 + 97), y+1))
-                move_list.append(tuple((king, chr(x - 2 + 97), y + 1)))
+                move_list.append(Move(king, file=chr(x - 2 + 97), rank=(y + 1)))
 
         if len(move_list) == 0:
             return None
@@ -369,8 +360,11 @@ class State:
             dx, dy = m
             if 0 <= x+dx < self._board.width and 0 <= y+dy < self._board.height:
                 space = self.__test_space(x + dx, y + dy)
-                if (space == "Open" or space == "Capturable") and not self.__in_check(x, y, x+dx, y+dy):
-                    move_list.append(tuple((knight, chr(x+dx + 97), y+dy + 1)))
+                if space == "Open" and not self.__in_check(x, y, x+dx, y+dy):
+                    move_list.append(Move(knight, file=chr(x+dx + 97), rank=(y+dy + 1)))
+                elif space == "Capturable" and not self.__in_check(x, y, x+dx, y+dy):
+                    move_list.append(Move(knight, file=chr(x+dx + 97), rank=(y+dy + 1),
+                                          capture=self._board[x+dx][y+dy]))
         if len(move_list) == 0:
             return None
         return move_list
@@ -385,14 +379,14 @@ class State:
         else:  # if self._color == "Black":
             dy = -1
 
-        def add_pawn_move(xf, yf):
+        def add_pawn_move(xf, yf, capture=None):
             f = chr(xf + 97)
             r = yf + 1
             if (self._color == "White" and r == 8) or (self._color == "Black" and r == 1):
                 promotions = ["Bishop", "Rook", "Knight", "Queen"]
-                [move_list.append(tuple((pawn, f, r, p))) for p in promotions]
+                [move_list.append(Move(pawn, file=f, rank=r, promotion=p, capture=capture)) for p in promotions]
             else:
-                move_list.append(tuple((pawn, f, r)))
+                move_list.append(Move(pawn, file=f, rank=r))
 
         # Check immediate ahead is open
         if self.__test_space(x, y+dy) == "Open" and not self.__in_check(x, y, x, y+dy):
@@ -407,10 +401,10 @@ class State:
         # Check for capturable units including en passant target
         if self.__test_space(x-1, y+dy) == "Capturable":  # or (x-1, y+dy) == self._en_passant_target:
             if not self.__in_check(x, y, x-1, y+dy):
-                add_pawn_move(x-1, y+dy)
+                add_pawn_move(x-1, y+dy, capture=self._board[x-1][y+dy])
         if self.__test_space(x+1, y+dy) == "Capturable":  # or (x+1, y+dy) == self._en_passant_target:
             if not self.__in_check(x, y, x+1, y+dy):
-                add_pawn_move(x+1, y+dy)
+                add_pawn_move(x+1, y+dy, capture=self._board[x+1][y+dy])
 
         if (x-1, y+dy) == self._en_passant_target:
             if not self.__in_check(x, y, x-1, y+dy):
@@ -449,6 +443,11 @@ class State:
         self.__add_direction(queen, move_list, -1, 0)  # Straight left
 
         return move_list
+
+    def __test_draw(self):
+        return (not self.__in_check() and len(self.moves) == 0) \
+                or self._turns_to_draw == 0 \
+                or self.__insufficient_material()
 
     def __test_space(self, x, y):
         if 0 <= x < self._board.width and 0 <= y < self._board.height:

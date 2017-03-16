@@ -1,6 +1,5 @@
 # This is where you build your AI for the Chess game.
 
-from collections import namedtuple
 from games.chess.state import State
 from joueur.base_ai import BaseAI
 import random
@@ -81,14 +80,12 @@ class AI(BaseAI):
         valid_moves = current_state.moves
         # [print("%s to %s %s " % (x[0].type, x[2], x[1])) for x in valid_moves]
         choice = random.choice(valid_moves)
-        if len(choice) == 3:
-            piece, file, rank = choice
-            [print("%s to %s %s" % (x[0].type, x[2], x[1])) for x in valid_moves if x[0].id == piece.id]
-            piece.move(file, rank)
-        elif len(choice) == 4:
-            piece, file, rank, promotion = choice
-            [print("%s to %s %s" % (x[0].type, x[2], x[1])) for x in valid_moves if x[0].id == piece.id]
-            piece.move(file, rank, promotion)
+        if choice.promotion is not None:
+            [print("%s to %s %s" % (x.piece.type, x.file, x.rank)) for x in valid_moves if x[0].id == choice.piece.id]
+            choice.piece.move(choice.file, choice.rank)
+        else:
+            [print("%s to %s %s" % (x.piece.type, x.file, x.rank)) for x in valid_moves if x[0].id == choice.piece.id]
+            choice.piece.move(choice.file, choice.rank, choice.promotion)
         print("\n")
         return True  # to signify we are done with our turn.
 
