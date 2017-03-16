@@ -21,6 +21,10 @@ def get_en_passant_coordinates(fen: str):
 
 
 def get_coordinates(rank, file):
+    """ :param rank: int representing a rank on the chess board
+        :param file: chr representing a file on the chess board
+        :return two-tuple containing the x and y coordinates of the given rank and file.
+    """
     x = ord(file) - 97
     y = rank - 1
     return tuple((x, y))

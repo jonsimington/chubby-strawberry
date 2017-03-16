@@ -2,11 +2,6 @@ from collections import namedtuple
 from games.chess.board import Board
 from games.chess.chess import get_coordinates, get_draw_counter, get_en_passant_coordinates
 
-# Note: Castling and en passant should be grabbed without FEN for future states
-# Note: Print in algebraic notation?? Don't want to do this.
-# Note: Could probably write a "format move function" to replace all the tuple calls,
-#       in case I decide to change how to send the move back to the AI.
-
 Move = namedtuple("Move", "piece, file, rank, promotion, capture")
 Move.__new__.__defaults__ = (False, None)
 
@@ -147,6 +142,13 @@ class State:
             yc += dy
 
     def __enemy(self, piece: str):
+        """
+            Used to quickly and easily refer to friendly pieces by their representative
+            character (FEN) regardless of player color.
+            :param piece: String (intended to be single character but not required).
+            :return: Returns the given string either in fully upper-case or lower-case
+                     depending on player color, to reflect Forsyth-Edwards Notation
+        """
         assert type(piece) is str
         if self._color == "White":
             return piece.lower()
@@ -155,11 +157,11 @@ class State:
 
     def __friendly(self, piece: str):
         """
-        Used to quickly and easily refer to friendly pieces by their representative
-        character (FEN) regardless of player color.
-        :param piece: String (intended to be single character but not required).
-        :return: Returns the given string either in fully upper-case or lower-case
-                 depending on player color, to reflect Forsyth-Edwards Notation
+          Used to quickly and easily refer to friendly pieces by their representative
+          character (FEN) regardless of player color.
+          :param piece: String (intended to be single character but not required).
+          :return: Returns the given string either in fully upper-case or lower-case
+                     depending on player color, to reflect Forsyth-Edwards Notation
         """
         assert type(piece) is str
         if self._color == "White":
@@ -168,6 +170,20 @@ class State:
             return piece.lower()
 
     def __in_check(self, xi=0, yi=0, xf=0, yf=0, move_king=False):
+        """
+            Cycles through all potentially dangerous spaces to confirm whether or not if king is in check
+            after a specific move is taken. In other words, confirms whether a move should be prevented by allowing
+            a check to occur.
+
+            :param xi: integer representing the initial x coordinate of piece to move
+            :param yi: integer representing the initial y coordinate of piece to move
+            :param xf: integer representing the final x coordinate of piece to move
+            :param yf: integer representing the final y coordinate of piece to move
+            :param move_king: bool representing whether or not the piece being moved is the friendly king
+
+            Returns:
+                bool:   Represents whether or not friendly king is in check
+        """
         king = next(p for p in self._friendly_pieces if p.type == "King")
         if move_king is False:
             kx, ky = get_coordinates(king.rank, king.file)
@@ -238,9 +254,11 @@ class State:
         return False
 
     def __in_checkmate(self):
+        """ Performs a check that the friendly player is currently checkmated """
         return self.__in_check() and len(self.moves) == 0
 
     def __insufficient_material(self):
+        """ Performs a check that the state is not one of insufficient material - which results in a draw """
         fp = [p.type for p in self._friendly_pieces]
         ep = [p.type for p in self._enemy_pieces]
 
@@ -251,21 +269,22 @@ class State:
         # Test for KNk with N on either side
         elif (len(fp) is 1 and len(ep) is 2 and "Knight" in ep) \
                 or (len(ep) is 1 and len(fp) is 2 and "Knight" in fp):
-            return True  # Test for KBk with B on either side
+            return True
 
+        #  Test for KBk with B on either side
         elif (len(fp) is 1 and len(ep) is 2 and "Bishop" in ep) \
                 or (len(ep) is 1 and len(fp) is 2 and "Bishop" in fp):
             return True
 
     def __potential_moves(self):
-        """
-        Cycles through all pieces and generates a list of moves that are valid given the current state of the game.
-        :return: List of valid moves from current state. tuple(piece, file, rank)
+        """ Cycles through all pieces and generates a list of moves that are valid given the current state of the game.
+           :return: List of valid moves from current state. tuple(piece, file, rank)
         """
         valid_move_list = []
 
         def conditional_append(ol, el):
-            """ :param ol -- original list
+            """ Meant to prevent an append of a list of zero potential moves
+                :param ol -- original list
                 :param el -- new list of elements to append
             """
             if el is not None:
@@ -355,8 +374,7 @@ class State:
         assert knight.type == "Knight"
         x, y = get_coordinates(knight.rank, knight.file)
         move_list = []
-        mods = [(2, 1), (2, -1), (-1, -2), (1, -2), (-2, -1), (-2, 1), (-1, 2), (1, 2)]
-        for m in mods:
+        for m in [(2, 1), (2, -1), (-1, -2), (1, -2), (-2, -1), (-2, 1), (-1, 2), (1, 2)]:
             dx, dy = m
             if 0 <= x+dx < self._board.width and 0 <= y+dy < self._board.height:
                 space = self.__test_space(x + dx, y + dy)
@@ -380,6 +398,7 @@ class State:
             dy = -1
 
         def add_pawn_move(xf, yf, capture=None):
+            """ Wrapper to add the pawns movement. Main purpose is to handle promotions. """
             f = chr(xf + 97)
             r = yf + 1
             if (self._color == "White" and r == 8) or (self._color == "Black" and r == 1):
@@ -429,7 +448,7 @@ class State:
             return None
         return move_list
 
-    def __potential_queen_moves(self, queen):  # DONE: Confirmed working.
+    def __potential_queen_moves(self, queen):
         """ Tests all possible moves from given queen and returns list of valid moves """
         assert queen.type == "Queen"
         move_list = []
@@ -445,11 +464,19 @@ class State:
         return move_list
 
     def __test_draw(self):
+        """ Returns:
+            bool:   True under the standard conditions for a stalemate, or a draw
+                    either by turn or insufficient material
+        """
         return (not self.__in_check() and len(self.moves) == 0) \
                 or self._turns_to_draw == 0 \
                 or self.__insufficient_material()
 
     def __test_space(self, x, y):
+        """ Returns:
+            str:  Represents the state of that space, which can be any of:
+                  `Capturable', `Blocked', `Open', `Out of Bounds'
+        """
         if 0 <= x < self._board.width and 0 <= y < self._board.height:
             if self._board[x][y] != "":
                 if (self._color == "White" and self._board[x][y].islower()) or \
@@ -461,4 +488,3 @@ class State:
                 return "Open"
         else:
             return "Out of Bounds"
-

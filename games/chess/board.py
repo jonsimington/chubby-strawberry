@@ -50,17 +50,44 @@ class Board(list):
         [self.append(x) for x in placeholder]
 
     def move_piece(self, xi=None, yi=None, xf=None, yf=None, ri=None, fi=None, rf=None, ff=None):
+        """ Moves the token marker for a piece from one space to another.
+            Simply a wrapper to handle moving either xy system or rank-file system
+
+            :param xi: int representing the initial x coordinate of the piece to be moved
+            :param yi: int representing the initial y coordinate of the piece to be moved
+            :param xf: int representing the final x coordinate of the piece to be moved
+            :param yf: int representing the final y coordinate of the piece to be moved
+
+            :param ri: int representing the initial rank of the piece to be moved
+            :param fi: chr representing the initial file of the piece to be moved
+            :param rf: int representing the final rank of the piece to be moved
+            :param ff: chr representing the final file of the piece to be moved
+        """
         if xi is not None and yi is not None and xf is not None and yf is not None:
             self.move_piece_xy(xi, yi, xf, yf)
         elif ri is not None and fi is not None and rf is not None and ff is not None:
             self.move_piece_rf(ri, fi, rf, ff)
 
     def move_piece_rf(self, ri, fi, rf, ff):
+        """ Moves the token marker for a piece from one space to another.
+
+            :param ri: int representing the initial rank of the piece to be moved
+            :param fi: chr representing the initial file of the piece to be moved
+            :param rf: int representing the final rank of the piece to be moved
+            :param ff: chr representing the final file of the piece to be moved
+        """
         xi, yi = get_coordinates(ri, fi)
         xf, yf = get_coordinates(rf, ff)
         self.move_piece_xy(xi, yi, xf, yf)
 
     def move_piece_xy(self, xi, yi, xf, yf):
+        """ Moves the token marker for a piece from one space to another.
+
+            :param xi: int representing the initial x coordinate of the piece to be moved
+            :param yi: int representing the initial y coordinate of the piece to be moved
+            :param xf: int representing the final x coordinate of the piece to be moved
+            :param yf: int representing the final y coordinate of the piece to be moved
+        """
         marker = self[xi][yi]
         self[xi][yi] = ""
         self[xf][yf] = marker

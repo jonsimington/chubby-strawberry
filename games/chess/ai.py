@@ -138,7 +138,7 @@ class AI(BaseAI):
 
 # noinspection PyUnboundLocalVariable
 def mini_max_decision(state):  # returns an action
-    """ Decides what move to  """
+    """ Decides what move to take by the MiniMax algorithm detailed in chapter 5 """
 
     player = to_move(state)
 
@@ -198,4 +198,3 @@ def to_move(state):
 def utility(state, player):
     """"Return the value of this final state to player."""
     return state.utility if player == state.to_move else -state.utility
-
