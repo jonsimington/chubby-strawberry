@@ -13,6 +13,7 @@ class State:
             :param parent - parent state on which to apply action
             :param action - action to be applied to parent state
         """
+
         if parent is None and action is None:  # Initialize from game FEN
             self._board = Board(game.fen)  # Have to change in future assignments
             self._color = game.current_player.color
@@ -21,20 +22,22 @@ class State:
             self._en_passant_target = get_en_passant_coordinates(game.fen)
             for p in game.players:
                 if self._color == p.color:
-                    self._friendly_pieces = [Piece(x.owner, x.type, x.file, x.rank, x.has_moved) for x in p.pieces]
+                    self._friendly_pieces = [MyPiece(x.owner.color, x.type, x.file, x.rank, x.has_moved, pid=x.id) for x in p.pieces]
                 else:
-                    self._enemy_pieces = [Piece(x.owner, x.type, x.file, x.rank, x.has_moved) for x in p.pieces]
+                    self._enemy_pieces = [MyPiece(x.owner.color, x.type, x.file, x.rank, x.has_moved, pid=x.id) for x in p.pieces]
             self._turns_to_draw = get_draw_counter(game.fen)
             self._castle = list(game.fen.split(" ")[2])
 
         else:  # Initialize from acting upon a parent
             assert parent is not None and action is not None
-            self._board = parent.board.copy().move_piece_rf(action[0].rank, action[0].file, action[2], action[1])
+            self._board = parent.board.copy()
+            self._board.move_piece_rf(action.piece.rank, action.piece.file, action.rank, action.file)
             self._color = "White" if parent.to_move == "Black" else "Black"
 
             # Check for en passant target
-            if action[0].type == "Pawn" and (action[2] - action[0].rank == 2 or action[2] - action[0].rank == -2):
-                r = int((action[0].rank + action[2]) / 2)
+            if action.piece.type == "Pawn" and (action.rank - action.piece.rank == 2 or
+                                                action.rank - action.piece.rank == -2):
+                r = int((action.piece.rank + action.rank) / 2)
                 self._en_passant_target = get_coordinates(r, action[0].file)
             else:
                 self._en_passant_target = None
@@ -42,17 +45,17 @@ class State:
             self._friendly_pieces = []  # Modify the piece that was moved'
             self._enemy_pieces = []
 
-            for p in parent._pieces:
-                c = p.copy
-                if c.id == action[0].id:
+            for p in parent._friendly_pieces:
+                c = p.copy()
+                if c.id == action.piece.id:
                     c.has_moved = True
-                    c.file = action[1].file
-                    c.rank = action[2].rank
+                    c.file = action.file
+                    c.rank = action.rank
                 self._enemy_pieces.append(c)  # Parent friendly pieces become enemy pieces
             self._friendly_pieces = [p for p in parent._enemy_pieces]  # Parent enemies are current friendlies
 
             # Captures can only occur on players that are currently friendly (assuming two-player Chess)
-            if action[0] == "Pawn" or len(self._friendly_pieces) != len(parent._friendly_pieces):
+            if action.piece.type == "Pawn" or len(self._friendly_pieces) != len(parent._friendly_pieces):
                 self._turns_to_draw = 50
             else:
                 self._turns_to_draw = parent._turns_to_draw - 1
@@ -61,12 +64,12 @@ class State:
             if self._castle:
                 if (action[0].type == "Rook" and action[0].file == 'a') or action[0].type == "King":
                     try:
-                        self._castle.remove('q' if action[0].owner == "White" else 'Q')
+                        self._castle.remove('q' if action[0].color == "White" else 'Q')
                     except ValueError:  # Will trigger if the move was not in the list to begin with
                         pass
                 if (action[0].type == "Rook" and action[0].file == 'h') or action[0].type == "King":
                     try:
-                        self._castle.remove('k' if action[0].owner == "White" else 'K')
+                        self._castle.remove('k' if action[0].color == "White" else 'K')
                     except ValueError:  # Will trigger if the move was not in the list to begin with
                         pass
 
@@ -79,6 +82,10 @@ class State:
     @property
     def board(self):
         return self._board
+
+    @property
+    def game(self):
+        return self._game
 
     @property
     def moves(self):
@@ -350,16 +357,14 @@ class State:
         append_space_if_valid(x, y+1)  # Straight down
         append_space_if_valid(x, y-1)  # Straight up
 
-        if self.__friendly("K") in self._castle:
+        if self.__friendly("K") in self._castle and not self.__in_check(x, y, x, y):
             # King-side castle
-            print("Test space %s %s: %s" % (chr(x+1+97), y+1, self.__test_space(x + 1, y)))
-            print("Test space %s %s: %s" % (chr(x+2+97), y+1, self.__test_space(x + 2, y)))
             if self.__test_space(x+1, y) == "Open" and self.__test_space(x+2, y) == "Open":
                 if not self.__in_check(x, y, x+1, y, move_king=True) and \
                         not self.__in_check(x, y, x+2, y, move_king=True):
                     move_list.append(Move(king, file=chr(x+2 + 97), rank=(y + 1)))
 
-        if self.__friendly("Q") in self._castle:
+        if self.__friendly("Q") in self._castle and not self.__in_check(x, y, x, y):
             # Queen-side castle
             if self.__test_space(x - 1, y) == "Open" and self.__test_space(x - 2, y) == "Open" \
                     and self.__test_space(x - 3, y) == "Open" and not self.__in_check(x, y, x - 1, y, move_king=True) \

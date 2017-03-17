@@ -1,3 +1,4 @@
+from games.chess.game_object import GameObject
 from itertools import count
 
 
@@ -5,7 +6,7 @@ def get_draw_counter(fen: str):
     """ :param fen: String in the format of Forsyth-Edwards Notation
         :return int counting number of half-moves since pawn movement or capture
     """
-    return fen.split(" ")[4]
+    return int(fen.split(" ")[4])
 
 
 def get_en_passant_coordinates(fen: str):
@@ -31,56 +32,78 @@ def get_coordinates(rank, file):
 
 
 # noinspection PyAttributeOutsideInit
-class Piece:
+class MyPiece(GameObject):
     _ids = count(0)
 
-    def __init__(self, owner, t, file, rank, has_moved, pid=None):
+    def __init__(self, color, t, file, rank, has_moved, pid=None):
+        GameObject.__init__(self)
+
         self.file = file
         self.has_moved = has_moved
-        self.owner = owner
+        self.__color = color
         self.rank = rank
         self.type = t
         if pid is None:
-            self.__id = self._ids.next()
+            self.__id = self._ids.__next__()
         else:
             self.__id = pid
         self.__x, self.__y = get_coordinates(self.rank, self.file)
         self.__space_color = "Black" if self.x + self.y % 2 == 0 else "White"
 
     def copy(self):
-        return Piece(self.owner, self.type, self.file, self.rank, self.has_moved, self.id)
+        return MyPiece(self.color, self.type, self.file, self.rank, self.has_moved, self.id)
 
     def evaluate(self, end_game=False):
+        assert self.type in ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"]
+        assert self.color in ["White", "Black"]
         if self.type == "Pawn":
-            if self.owner.color == "White":
+            if self.color == "White":
                 return 100 + WHITE_PAWN_EVAL[self.x][self.y]
             else:  # if self.owner.color == "Black"
-                return 333 + BLACK_BISHOP_EVAL[self.x][self.y]
+                return 100 + BLACK_PAWN_EVAL[self.x][self.y]
+        elif self.type == "Knight":
+            if self.color == "White":
+                return 320 + WHITE_KNIGHT_EVAL[self.x][self.y]
+            else:  # if self.color == "Black"
+                return 320 + BLACK_KNIGHT_EVAL[self.x][self.y]
         elif self.type == "Bishop":
-            if self.owner.color == "White":
+            if self.color == "White":
                 return 333 + WHITE_BISHOP_EVAL[self.x][self.y]
             else:  # if self.owner.color == "Black"
                 return 333 + BLACK_BISHOP_EVAL[self.x][self.y]
         elif self.type == "Rook":
-            if self.owner.color == "White":
+            if self.color == "White":
                 return 510 + WHITE_ROOK_EVAL[self.x][self.y]
             else:  # if self.owner.color == "Black"
                 return 510 + BLACK_ROOK_EVAL[self.x][self.y]
         elif self.type == "Queen":
-            if self.owner.color == "White":
+            if self.color == "White":
                 return 880 + WHITE_QUEEN_EVAL[self.x][self.y]
             else:  # if self.owner.color == "Black"
                 return 880 + BLACK_QUEEN_EVAL[self.x][self.y]
-        elif self.type == "King" and end_game == "False":
-            if self.owner.color == "White":
+        if self.type == "King" and end_game is False:
+            if self.color == "White":
                 return 20000 + WHITE_KING_MID_EVAL[self.x][self.y]
             else:  # if self.owner.color == "Black"
                 return 20000 + BLACK_KING_MID_EVAL[self.x][self.y]
-        elif self.type == "King" and end_game == "True":
-            if self.owner.color == "White":
+        elif self.type == "King" and end_game is True:
+            if self.color == "White":
                 return 20000 + WHITE_KING_END_EVAL[self.x][self.y]
             else:  # if self.owner.color == "Black"
                 return 20000 + BLACK_KING_END_EVAL[self.x][self.y]
+
+    def move(self, file, rank, promotionType=""):
+        """ Moves the Piece from its current location to the given rank and file.
+
+        Args:
+            file (str): The file coordinate to move to. Must be [a-h].
+            rank (int): The rank coordinate to move to. Must be [1-8].
+            promotion_type (Optional[str]): If this is a Pawn moving to the end of the board then this parameter is what to promote it to. When used must be 'Queen', 'Knight', 'Rook', or 'Bishop'.
+
+        Returns:
+            Move: The Move you did if successful, otherwise None if invalid. In addition if your move was invalid you will lose.
+        """
+        return self._run_on_server('move', file=file, rank=rank, promotionType=promotionType)
 
     @property
     def space_color(self):
@@ -92,7 +115,7 @@ class Piece:
 
     @file.setter
     def file(self, f):
-        assert type(f) is chr
+        assert type(f) is str
         assert f in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
         self.__file = f
 
@@ -110,14 +133,8 @@ class Piece:
         return self.__id
 
     @property
-    def owner(self):
-        return self.__owner
-
-    @owner.setter
-    def owner(self, o):
-        assert type(o) is str
-        assert o in ["Black", "White"]
-        self.__owner = o
+    def color(self):
+        return self.__color
 
     @property
     def rank(self):

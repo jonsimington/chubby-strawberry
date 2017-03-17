@@ -79,13 +79,13 @@ class AI(BaseAI):
         current_state = State(self.game)
         valid_moves = current_state.moves
         # [print("%s to %s %s " % (x[0].type, x[2], x[1])) for x in valid_moves]
-        choice = random.choice(valid_moves)
+        choice = mini_max_decision(current_state)
         if choice.promotion is not None:
             [print("%s to %s %s" % (x.piece.type, x.file, x.rank)) for x in valid_moves if x[0].id == choice.piece.id]
-            choice.piece.move(choice.file, choice.rank)
+            choice.piece.move(choice.file, choice.rank, choice.promotion)
         else:
             [print("%s to %s %s" % (x.piece.type, x.file, x.rank)) for x in valid_moves if x[0].id == choice.piece.id]
-            choice.piece.move(choice.file, choice.rank, choice.promotion)
+            choice.piece.move(choice.file, choice.rank)
         print("\n")
         return True  # to signify we are done with our turn.
 
@@ -134,6 +134,7 @@ class AI(BaseAI):
 
                 output += "|"
             print(output)
+        print(self.game.fen)
 
 
 # noinspection PyUnboundLocalVariable
@@ -141,9 +142,11 @@ def mini_max_decision(state):  # returns an action
     """ Decides what move to take by the MiniMax algorithm detailed in chapter 5 """
 
     player = to_move(state)
+    print("MiniMax Decision")
 
     # noinspection PyShadowingNames
     def max_value(state, depth, max_depth):  # returns a utility value
+        # print("Max value")
         """ Selects the maximum value for the utility of a state resulting from a move by the AI player """
         if terminal_test(state) or depth == max_depth:
             return utility(state, player)
@@ -154,6 +157,7 @@ def mini_max_decision(state):  # returns an action
 
     # noinspection PyShadowingNames
     def min_value(state, depth, max_depth):  # returns a utility value
+        # print("Min value")
         """ Selects the minimum value for the utility of a state resulting from a move by the enemy player """
         if terminal_test(state) or depth == max_depth:
             return utility(state, player)
@@ -162,7 +166,9 @@ def mini_max_decision(state):  # returns an action
             v = min(v, max_value(result(state, a), depth + 1, max_depth))
         return v
 
-    for max_depth in range(3):
+    for m_depth in range(3):
+        max_depth = m_depth + 1
+        print("Max depth of %s" % max_depth)
         max_utility = -infinity
         for a in actions(state):
             min_utility = min_value(result(state, a), depth=0, max_depth=max_depth)
@@ -182,7 +188,7 @@ def result(state, move):
     """Return the state that results from making a move from a state."""
     if move not in state.moves:
         return state
-    return State(state.game, parent=state, action=move)
+    return state.move_result(action=move)
 
 
 def terminal_test(state):
