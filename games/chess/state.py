@@ -1,6 +1,6 @@
 from collections import namedtuple
 from games.chess.board import Board
-from games.chess.chess import get_coordinates, get_draw_counter, get_en_passant_coordinates
+from games.chess.chess import *
 
 Move = namedtuple("Move", "piece, file, rank, promotion, capture")
 Move.__new__.__defaults__ = (False, None)
@@ -21,11 +21,12 @@ class State:
             self._en_passant_target = get_en_passant_coordinates(game.fen)
             for p in game.players:
                 if self._color == p.color:
-                    self._friendly_pieces = p.pieces
+                    self._friendly_pieces = [Piece(x.owner, x.type, x.file, x.rank, x.has_moved) for x in p.pieces]
                 else:
-                    self._enemy_pieces = p.pieces
+                    self._enemy_pieces = [Piece(x.owner, x.type, x.file, x.rank, x.has_moved) for x in p.pieces]
             self._turns_to_draw = get_draw_counter(game.fen)
             self._castle = list(game.fen.split(" ")[2])
+
         else:  # Initialize from acting upon a parent
             assert parent is not None and action is not None
             self._board = parent.board.copy().move_piece_rf(action[0].rank, action[0].file, action[2], action[1])
@@ -92,7 +93,7 @@ class State:
         return self._color
 
     @property
-    def utility(self):  # Not sure how to evaluate things
+    def utility(self):
         return self._utility
 
     # -------------- PUBLIC FUNCTIONS --------------
@@ -102,24 +103,13 @@ class State:
         return State(self._game, parent=self, action=action)
 
     # ----------------- IMPLEMENT ------------------
-    def __find_utility(self):  # TODO: Implement
-        raise NotImplementedError
-        # Difference between friendly and enemy values (Hans Berliner's system)
-        #   pawn = 100
-        #   knight = 320   Gain up to 50% in closed. Lose up to 30% in corners and edges.
-        #   bishop = 333   Gain up to 10% in open. Lose up to 20% in closed.
-        #   rook = 510      Gain up to 10% in open. Lose up to 20% in closed.
-        #   queen = 880     Gain up to 10% in open. Lose up to 20% in closed.
-
-        # King Safety!
-        #   Pawn shield
-        #   Castle
-        #   Defender protection (?)
-
-        # if self.__in_checkmate():
-        #     return -1
-        # elif self.__test_draw():
-        #     return 0
+    def __find_utility(self):
+        utility = 0
+        for f in self._friendly_pieces:
+            utility += f.evaluate()
+        for e in self._enemy_pieces:
+            utility -= e.evaluate()
+        return utility
 
     # ----------------- PRIVATE FUNCTIONS -----------------
     def __add_direction(self, piece, moves, dx, dy):

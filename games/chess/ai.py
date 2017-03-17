@@ -162,7 +162,7 @@ def mini_max_decision(state):  # returns an action
             v = min(v, max_value(result(state, a), depth + 1, max_depth))
         return v
 
-    for max_depth in range(3):  # TODO: Figure out best depth
+    for max_depth in range(3):
         max_utility = -infinity
         for a in actions(state):
             min_utility = min_value(result(state, a), depth=0, max_depth=max_depth)
