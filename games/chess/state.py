@@ -104,6 +104,18 @@ class State:
     # ----------------- IMPLEMENT ------------------
     def __find_utility(self):  # TODO: Implement
         raise NotImplementedError
+        # Difference between friendly and enemy values (Hans Berliner's system)
+        #   pawn = 100
+        #   knight = 320   Gain up to 50% in closed. Lose up to 30% in corners and edges.
+        #   bishop = 333   Gain up to 10% in open. Lose up to 20% in closed.
+        #   rook = 510      Gain up to 10% in open. Lose up to 20% in closed.
+        #   queen = 880     Gain up to 10% in open. Lose up to 20% in closed.
+
+        # King Safety!
+        #   Pawn shield
+        #   Castle
+        #   Defender protection (?)
+
         # if self.__in_checkmate():
         #     return -1
         # elif self.__test_draw():
