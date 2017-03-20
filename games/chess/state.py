@@ -248,7 +248,7 @@ class State:
         dir_mods = [-1, 0, 1]
         for dx in dir_mods:
             for dy in dir_mods:
-                if direction_threatens_check(dx, dy):
+                if not (dx == 0 and dy == 0) and direction_threatens_check(dx, dy):
                     return True
 
         # Enemy king
