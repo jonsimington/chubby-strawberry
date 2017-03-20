@@ -166,7 +166,7 @@ def mini_max_decision(state):  # returns an action
             v = min(v, max_value(result(state, a), depth + 1, max_depth))
         return v
 
-    for m_depth in range(3):
+    for m_depth in range(2):  # TODO: Stops working quickly enough after a depth of 2?
         max_depth = m_depth + 1
         print("Max depth of %s" % max_depth)
         max_utility = -infinity
