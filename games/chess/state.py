@@ -256,7 +256,7 @@ class State:
         y_mods = [1, 0, -1]
         for dx in x_mods:
             for dy in y_mods:
-                if space_threatens_check(kx + dx, ky + dy, "K"):
+                if not (dx == 0 and dy == 0) and space_threatens_check(kx + dx, ky + dy, "K"):
                     return True
 
         # No pieces threatening check!
