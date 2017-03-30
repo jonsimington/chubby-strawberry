@@ -2,6 +2,10 @@ from games.chess.game_object import GameObject
 from itertools import count
 
 
+def get_player(fen: str):
+    return str(fen.split(" ")[1])
+
+
 def get_draw_counter(fen: str):
     """ :param fen: String in the format of Forsyth-Edwards Notation
         :return int counting number of half-moves since pawn movement or capture
@@ -31,11 +35,17 @@ def get_coordinates(rank, file):
     return tuple((x, y))
 
 
+def get_file_rank(x,y):
+    file = chr(x+97)
+    rank = y + 1
+    return tuple((file, rank))
+
+
 # noinspection PyAttributeOutsideInit
 class MyPiece(GameObject):
     _ids = count(0)
 
-    def __init__(self, color, t, file, rank, has_moved, pid=None):
+    def __init__(self, color, t, file, rank, has_moved, captured=False, pid=None):
         GameObject.__init__(self)
 
         self.file = file
@@ -43,6 +53,7 @@ class MyPiece(GameObject):
         self.__color = color
         self.rank = rank
         self.type = t
+        self.captured = captured
         if pid is None:
             self.__id = self._ids.__next__()
         else:
@@ -51,11 +62,13 @@ class MyPiece(GameObject):
         self.__space_color = "Black" if self.x + self.y % 2 == 0 else "White"
 
     def copy(self):
-        return MyPiece(self.color, self.type, self.file, self.rank, self.has_moved, self.id)
+        return MyPiece(self.color, self.type, self.file, self.rank, self.has_moved, self.captured, self.id)
 
     def evaluate(self, end_game=False):
         assert self.type in ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"]
         assert self.color in ["White", "Black"]
+        if self.captured is True:
+            return 0
         if self.type == "Pawn":
             if self.color == "White":
                 return 100 + WHITE_PAWN_EVAL[self.x][self.y]
@@ -108,6 +121,15 @@ class MyPiece(GameObject):
     @property
     def space_color(self):
         return self.__space_color
+
+    @property
+    def captured(self):
+        return self.__captured
+
+    @captured.setter
+    def captured(self, c):
+        assert type(c) is bool
+        self.__captured = c
 
     @property
     def file(self):

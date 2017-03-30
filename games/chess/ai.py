@@ -2,7 +2,6 @@
 
 from games.chess.state import State
 from joueur.base_ai import BaseAI
-import random
 
 infinity = float('inf')
 
@@ -80,6 +79,7 @@ class AI(BaseAI):
         valid_moves = current_state.moves
         # [print("%s to %s %s " % (x[0].type, x[2], x[1])) for x in valid_moves]
         choice = mini_max_decision(current_state)
+        self.print_current_board()
         if choice.promotion is not None:
             [print("%s to %s %s" % (x.piece.type, x.file, x.rank)) for x in valid_moves if x[0].id == choice.piece.id]
             choice.piece.move(choice.file, choice.rank, choice.promotion)
@@ -136,39 +136,51 @@ class AI(BaseAI):
             print(output)
         print(self.game.fen)
 
+states_checked = 0
+
 
 # noinspection PyUnboundLocalVariable
 def mini_max_decision(state):  # returns an action
     """ Decides what move to take by the MiniMax algorithm detailed in chapter 5 """
-
     player = to_move(state)
     print("MiniMax Decision")
 
     # noinspection PyShadowingNames
     def max_value(state, depth, max_depth):  # returns a utility value
-        # print("Max value")
         """ Selects the maximum value for the utility of a state resulting from a move by the AI player """
+        global states_checked
+        print("Max: %s" % states_checked)
         if terminal_test(state) or depth == max_depth:
+            # print("Terminal test confirmed!")
+            states_checked += 1
             return utility(state, player)
+
         v = -infinity
-        for a in actions(state):
+        l = actions(state)
+        for a in l:
             v = max(v, min_value(result(state, a), depth + 1, max_depth))
+        states_checked += 1
         return v
 
     # noinspection PyShadowingNames
     def min_value(state, depth, max_depth):  # returns a utility value
-        # print("Min value")
+        global states_checked
+        print("Min: %s" % states_checked)
         """ Selects the minimum value for the utility of a state resulting from a move by the enemy player """
         if terminal_test(state) or depth == max_depth:
+            states_checked += 1
             return utility(state, player)
         v = infinity
         for a in actions(state):
             v = min(v, max_value(result(state, a), depth + 1, max_depth))
+        states_checked += 1
         return v
 
     for m_depth in range(2):
+        global states_checked
+        states_checked = 0
         max_depth = m_depth + 1
-        print("Max depth of %s" % max_depth)
+        # print("Max depth of %s" % max_depth)
         max_utility = -infinity
         for a in actions(state):
             min_utility = min_value(result(state, a), depth=0, max_depth=max_depth)

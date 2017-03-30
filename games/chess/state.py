@@ -29,8 +29,11 @@ class State:
             self._castle = list(game.fen.split(" ")[2])
 
         else:  # Initialize from acting upon a parent
+            # TODO: Not properly accounting for captured pieces. They remain in the array of pieces and add to utility
+            #       function despite no longer being in play.
             assert parent is not None and action is not None
             self._board = parent.board.copy()
+
             self._board.move_piece_rf(action.piece.rank, action.piece.file, action.rank, action.file)
             self._color = "White" if parent.to_move == "Black" else "Black"
 
@@ -45,6 +48,7 @@ class State:
             self._friendly_pieces = []  # Modify the piece that was moved'
             self._enemy_pieces = []
 
+            # TODO: Could possibly switch to list comprehension followed by a filter()? Test for speed later.
             for p in parent._friendly_pieces:
                 c = p.copy()
                 if c.id == action.piece.id:
@@ -52,7 +56,13 @@ class State:
                     c.file = action.file
                     c.rank = action.rank
                 self._enemy_pieces.append(c)  # Parent friendly pieces become enemy pieces
-            self._friendly_pieces = [p for p in parent._enemy_pieces]  # Parent enemies are current friendlies
+
+            # TODO: Could possibly switch to list comprehension followed by a filter()?
+            for p in parent._enemy_pieces:
+                c = p.copy()
+                if c.rank == action.rank and c.y == action.file:
+                    c.captured = True
+                self._friendly_pieces.append(c)
 
             # Captures can only occur on players that are currently friendly (assuming two-player Chess)
             if action.piece.type == "Pawn" or len(self._friendly_pieces) != len(parent._friendly_pieces):
@@ -112,6 +122,7 @@ class State:
     # ----------------- IMPLEMENT ------------------
     def __find_utility(self):
         utility = 0
+        # Evaluates the quality of piece location
         for f in self._friendly_pieces:
             utility += f.evaluate()
         for e in self._enemy_pieces:
@@ -143,8 +154,8 @@ class State:
             if space_status == "Open" and not self.__in_check(xi, yi, xc+dx, yc+dy):
                 moves.append(Move(piece, file=chr(xc + dx + 96 + 1), rank=(yc + dy + 1)))
             elif space_status == "Capturable" and not self.__in_check(xi, yi, xc+dx, yc+dy):
-                moves.append(Move(piece, file=chr(xc + dx + 96 + 1), rank=(yc + dy + 1),
-                                  capture=self._board[xc+dx][yc+dy]))
+                moves.insert(0, Move(piece, file=chr(xc + dx + 96 + 1), rank=(yc + dy + 1),
+                                     capture=self._board[xc+dx][yc+dy]))
             if space_status != "Open":
                 break
             xc += dx
@@ -301,25 +312,26 @@ class State:
 
         assert len(self._friendly_pieces) > 0
         for p in self._friendly_pieces:
-            piece_type = p.type.strip('\n')
-            if piece_type == "Queen":  # DONE: Confirmed working.
-                queen_moves = self.__potential_queen_moves(p)
-                conditional_append(valid_move_list, queen_moves)
-            elif piece_type == "Pawn":
-                pawn_moves = self.__potential_pawn_moves(p)
-                conditional_append(valid_move_list, pawn_moves)
-            elif piece_type == "King":
-                king_moves = self.__potential_king_moves(p)
-                conditional_append(valid_move_list, king_moves)
-            elif piece_type == "Knight":
-                knight_moves = self.__potential_knight_moves(p)
-                conditional_append(valid_move_list, knight_moves)
-            elif piece_type == "Rook":
-                rook_moves = self.__potential_rook_moves(p)
-                conditional_append(valid_move_list, rook_moves)
-            elif piece_type == "Bishop":
-                bishop_moves = self.__potential_bishop_moves(p)
-                conditional_append(valid_move_list, bishop_moves)
+            if p.captured is False:
+                piece_type = p.type.strip('\n')
+                if piece_type == "Queen":  # DONE: Confirmed working.
+                    queen_moves = self.__potential_queen_moves(p)
+                    conditional_append(valid_move_list, queen_moves)
+                elif piece_type == "Pawn":
+                    pawn_moves = self.__potential_pawn_moves(p)
+                    conditional_append(valid_move_list, pawn_moves)
+                elif piece_type == "King":
+                    king_moves = self.__potential_king_moves(p)
+                    conditional_append(valid_move_list, king_moves)
+                elif piece_type == "Knight":
+                    knight_moves = self.__potential_knight_moves(p)
+                    conditional_append(valid_move_list, knight_moves)
+                elif piece_type == "Rook":
+                    rook_moves = self.__potential_rook_moves(p)
+                    conditional_append(valid_move_list, rook_moves)
+                elif piece_type == "Bishop":
+                    bishop_moves = self.__potential_bishop_moves(p)
+                    conditional_append(valid_move_list, bishop_moves)
 
         return valid_move_list
 
