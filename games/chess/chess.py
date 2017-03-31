@@ -35,7 +35,7 @@ def get_coordinates(rank, file):
     return tuple((x, y))
 
 
-def get_file_rank(x,y):
+def get_file_rank(x, y):
     file = chr(x+97)
     rank = y + 1
     return tuple((file, rank))
@@ -96,14 +96,14 @@ class MyPiece(GameObject):
                 return 880 + BLACK_QUEEN_EVAL[self.x][self.y]
         if self.type == "King" and end_game is False:
             if self.color == "White":
-                return 20000 + WHITE_KING_MID_EVAL[self.x][self.y]
+                return 200000 + WHITE_KING_MID_EVAL[self.x][self.y]
             else:  # if self.owner.color == "Black"
-                return 20000 + BLACK_KING_MID_EVAL[self.x][self.y]
+                return 200000 + BLACK_KING_MID_EVAL[self.x][self.y]
         elif self.type == "King" and end_game is True:
             if self.color == "White":
-                return 20000 + WHITE_KING_END_EVAL[self.x][self.y]
+                return 200000 + WHITE_KING_END_EVAL[self.x][self.y]
             else:  # if self.owner.color == "Black"
-                return 20000 + BLACK_KING_END_EVAL[self.x][self.y]
+                return 200000 + BLACK_KING_END_EVAL[self.x][self.y]
 
     def move(self, file, rank, promotionType=""):
         """ Moves the Piece from its current location to the given rank and file.

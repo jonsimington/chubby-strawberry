@@ -45,10 +45,10 @@ class State:
             else:
                 self._en_passant_target = None
 
-            self._friendly_pieces = []  # Modify the piece that was moved'
+            self._friendly_pieces = []  # Modify the piece that was moved
             self._enemy_pieces = []
 
-            # TODO: Could possibly switch to list comprehension followed by a filter()? Test for speed later.
+            # Could possibly switch to list comprehension followed by a filter()?
             for p in parent._friendly_pieces:
                 c = p.copy()
                 if c.id == action.piece.id:
@@ -57,10 +57,10 @@ class State:
                     c.rank = action.rank
                 self._enemy_pieces.append(c)  # Parent friendly pieces become enemy pieces
 
-            # TODO: Could possibly switch to list comprehension followed by a filter()?
+            # Could possibly switch to list comprehension followed by a filter()?
             for p in parent._enemy_pieces:
                 c = p.copy()
-                if c.rank == action.rank and c.y == action.file:
+                if c.rank == action.rank and c.file == action.file:
                     c.captured = True
                 self._friendly_pieces.append(c)
 
@@ -84,6 +84,8 @@ class State:
                         pass
 
         self._moves = self.__potential_moves()
+        self._parent = parent
+        self._preceeding_action = action
         self._game = game
         self._utility = self.__find_utility()
 
@@ -111,7 +113,7 @@ class State:
 
     @property
     def utility(self):
-        return self._utility
+        return int(self._utility)
 
     # -------------- PUBLIC FUNCTIONS --------------
 
@@ -123,11 +125,38 @@ class State:
     def __find_utility(self):
         utility = 0
         # Evaluates the quality of piece location
-        for f in self._friendly_pieces:
-            utility += f.evaluate()
-        for e in self._enemy_pieces:
-            utility -= e.evaluate()
-        return utility
+        if self.__in_checkmate():
+            return -200000  # Value of king
+        if self.__test_draw():
+            return 0
+
+        pieces = self._friendly_pieces + self._enemy_pieces
+        for p in pieces:
+            if p.color == self._game.current_player.color:
+                utility -= p.evaluate()
+            else:
+                utility += p.evaluate()
+
+        return int(utility)
+
+    def __draw_by_threefold_repetition(self):
+        move_history = []
+        s = self
+        for i in range(8):
+            if s._parent is None or s._preceeding_action is None:
+                return False
+            action = s._preceeding_action
+            piece, _, _, promotion, capture = action
+            if piece == "Pawn" or promotion is not None or capture is not None:
+                return False
+            move_history.append(action)
+            s = self._parent
+
+        # Check for repeated moves
+        if not (move_history[0] == move_history[4] and move_history[1] == move_history[5]
+                and move_history[2] == move_history[6] and move_history[3] == move_history[7]):
+            return False
+        return True
 
     # ----------------- PRIVATE FUNCTIONS -----------------
     def __add_direction(self, piece, moves, dx, dy):
@@ -160,6 +189,36 @@ class State:
                 break
             xc += dx
             yc += dy
+
+    def __draw_by_insufficient_material(self):
+        """ Performs a check that the state is not one of insufficient material - which results in a draw """
+        fp = [p.type for p in self._friendly_pieces]
+        ep = [p.type for p in self._enemy_pieces]
+
+        # Test for Kk
+        if len(fp) is 1 and len(ep) is 1:
+            return True
+
+        # Test for KNk with N on either side
+        elif (len(fp) is 1 and len(ep) is 2 and "Knight" in ep) \
+                or (len(ep) is 1 and len(fp) is 2 and "Knight" in fp):
+            return True
+
+        #  Test for KBk with B on either side
+        elif (len(fp) is 1 and len(ep) is 2 and "Bishop" in ep) \
+                or (len(ep) is 1 and len(fp) is 2 and "Bishop" in fp):
+            return True
+
+        #  Test for KBk with B on either side
+        elif len(fp) is 2 and len(ep) is 2 and "Bishop" in ep and "Bishop" in fp:
+            p = list(filter(lambda x: x.type == "Bishop", fp+ep))
+            x0, y0 = get_coordinates(p[0].rank, p[0].file)
+            x1, y1 = get_coordinates(p[1].rank, p[1].file)
+            # Due to grid pattern, sum of x/y coordinate should alternate between even and odd for white and black
+            # If both pieces even or both pieces odd, then both pieces on same color
+            return x0 + y0 % 2 == x1 + y1 % 2
+
+        return False
 
     def __enemy(self, piece: str):
         """
@@ -277,25 +336,6 @@ class State:
         """ Performs a check that the friendly player is currently checkmated """
         return self.__in_check() and len(self.moves) == 0
 
-    def __insufficient_material(self):
-        """ Performs a check that the state is not one of insufficient material - which results in a draw """
-        fp = [p.type for p in self._friendly_pieces]
-        ep = [p.type for p in self._enemy_pieces]
-
-        # Test for Kk
-        if len(fp) is 1 and len(ep) is 1:
-            return True
-
-        # Test for KNk with N on either side
-        elif (len(fp) is 1 and len(ep) is 2 and "Knight" in ep) \
-                or (len(ep) is 1 and len(fp) is 2 and "Knight" in fp):
-            return True
-
-        #  Test for KBk with B on either side
-        elif (len(fp) is 1 and len(ep) is 2 and "Bishop" in ep) \
-                or (len(ep) is 1 and len(fp) is 2 and "Bishop" in fp):
-            return True
-
     def __potential_moves(self):
         """ Cycles through all pieces and generates a list of moves that are valid given the current state of the game.
            :return: List of valid moves from current state. tuple(piece, file, rank)
@@ -381,7 +421,6 @@ class State:
             if self.__test_space(x - 1, y) == "Open" and self.__test_space(x - 2, y) == "Open" \
                     and self.__test_space(x - 3, y) == "Open" and not self.__in_check(x, y, x - 1, y, move_king=True) \
                     and not self.__in_check(x, y, x - 2, y, move_king=True):
-                print("Q - Appending %s %s" % (chr(x-2 + 97), y+1))
                 move_list.append(Move(king, file=chr(x - 2 + 97), rank=(y + 1)))
 
         if len(move_list) == 0:
@@ -488,8 +527,9 @@ class State:
                     either by turn or insufficient material
         """
         return (not self.__in_check() and len(self.moves) == 0) \
-                or self._turns_to_draw == 0 \
-                or self.__insufficient_material()
+            or self._turns_to_draw == 0 \
+            or self.__draw_by_insufficient_material() \
+            or self.__draw_by_threefold_repetition()
 
     def __test_space(self, x, y):
         """ Returns:

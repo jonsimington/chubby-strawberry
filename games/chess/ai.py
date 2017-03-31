@@ -56,14 +56,6 @@ class AI(BaseAI):
                   function.
         """
 
-        # Here is where you'll want to code your AI.
-
-        # We've provided sample code that:
-        #    1) prints the board to the console
-        #    2) prints the opponent's last move to the console
-        #    3) prints how much time remaining this AI has to calculate moves
-        #    4) makes a random (and probably invalid) move.
-
         # 1) print the board to the console
         self.print_current_board()
 
@@ -74,20 +66,19 @@ class AI(BaseAI):
         # 3) print how much time remaining this AI has to calculate moves
         print("Time Remaining: " + str(self.player.time_remaining) + " ns")
 
-        # 4) Make a random valid move
+        # 4) Make a move
         current_state = State(self.game)
-        valid_moves = current_state.moves
-        # [print("%s to %s %s " % (x[0].type, x[2], x[1])) for x in valid_moves]
-        choice = mini_max_decision(current_state)
-        self.print_current_board()
+        choice, best_utility = mini_max_decision(current_state)
+
         if choice.promotion is not None:
-            [print("%s to %s %s" % (x.piece.type, x.file, x.rank)) for x in valid_moves if x[0].id == choice.piece.id]
             choice.piece.move(choice.file, choice.rank, choice.promotion)
         else:
-            [print("%s to %s %s" % (x.piece.type, x.file, x.rank)) for x in valid_moves if x[0].id == choice.piece.id]
             choice.piece.move(choice.file, choice.rank)
+
+        print("Best utility: %s" % best_utility)
+        print("%s %s%s" % (choice.piece.type, choice.piece.file, choice.piece.rank))
         print("\n")
-        return True  # to signify we are done with our turn.
+        return True
 
     def print_current_board(self):
         """Prints the current board using pretty ASCII art
@@ -146,10 +137,10 @@ def mini_max_decision(state):  # returns an action
     print("MiniMax Decision")
 
     # noinspection PyShadowingNames
-    def max_value(state, depth, max_depth):  # returns a utility value
+    def max_value(state, alpha, beta, depth, max_depth):  # returns a utility value
         """ Selects the maximum value for the utility of a state resulting from a move by the AI player """
         global states_checked
-        print("Max: %s" % states_checked)
+        # print("Max: %s" % states_checked)
         if terminal_test(state) or depth == max_depth:
             # print("Terminal test confirmed!")
             states_checked += 1
@@ -158,21 +149,27 @@ def mini_max_decision(state):  # returns an action
         v = -infinity
         l = actions(state)
         for a in l:
-            v = max(v, min_value(result(state, a), depth + 1, max_depth))
+            v = max(v, min_value(result(state, a), alpha, beta, depth + 1, max_depth))
+            if v >= beta:
+                return v
+            alpha = max(alpha, v)
         states_checked += 1
         return v
 
     # noinspection PyShadowingNames
-    def min_value(state, depth, max_depth):  # returns a utility value
+    def min_value(state, alpha, beta, depth, max_depth):  # returns a utility value
         global states_checked
-        print("Min: %s" % states_checked)
+        # print("Min: %s" % states_checked)
         """ Selects the minimum value for the utility of a state resulting from a move by the enemy player """
         if terminal_test(state) or depth == max_depth:
             states_checked += 1
             return utility(state, player)
         v = infinity
         for a in actions(state):
-            v = min(v, max_value(result(state, a), depth + 1, max_depth))
+            v = min(v, max_value(result(state, a), alpha, beta, depth + 1, max_depth))
+            if v <= alpha:
+                return v
+            beta = min(beta, v)
         states_checked += 1
         return v
 
@@ -180,15 +177,15 @@ def mini_max_decision(state):  # returns an action
         global states_checked
         states_checked = 0
         max_depth = m_depth + 1
-        # print("Max depth of %s" % max_depth)
+        print("Max depth of %s" % max_depth)
         max_utility = -infinity
-        for a in actions(state):
-            min_utility = min_value(result(state, a), depth=0, max_depth=max_depth)
+        for a in actions(state):  # Find the maximum
+            min_utility = min_value(result(state, a), -infinity, infinity, 0, max_depth)
             if min_utility > max_utility:  # Guaranteed to trigger on first completion of min_value
                 max_utility = min_utility
                 best_action = a
         last_depth_best = best_action
-    return last_depth_best
+    return last_depth_best, max_utility
 
 
 def actions(state):
