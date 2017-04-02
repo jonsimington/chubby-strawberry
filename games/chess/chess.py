@@ -60,6 +60,15 @@ class MyPiece(GameObject):
             self.__id = pid
         self.__x, self.__y = get_coordinates(self.rank, self.file)
         self.__space_color = "Black" if self.x + self.y % 2 == 0 else "White"
+        self._value = self.evaluate()
+
+    def __cmp__(self, other):
+        if self.value > other.value:
+            return 1
+        elif self.value == other.value:
+            return 0
+        else:
+            return -1
 
     def copy(self):
         return MyPiece(self.color, self.type, self.file, self.rank, self.has_moved, self.captured, self.id)
@@ -119,10 +128,6 @@ class MyPiece(GameObject):
         return self._run_on_server('move', file=file, rank=rank, promotionType=promotionType)
 
     @property
-    def space_color(self):
-        return self.__space_color
-
-    @property
     def captured(self):
         return self.__captured
 
@@ -169,6 +174,10 @@ class MyPiece(GameObject):
         self.__rank = r
 
     @property
+    def space_color(self):
+        return self.__space_color
+
+    @property
     def type(self):
         return self.__type
 
@@ -177,6 +186,10 @@ class MyPiece(GameObject):
         assert type(t) is str
         assert t in ["Pawn", "Rook", "Knight", "Bishop", "Queen", "King"]
         self.__type = t
+
+    @property
+    def value(self):
+        return self._value
 
     @property
     def x(self):

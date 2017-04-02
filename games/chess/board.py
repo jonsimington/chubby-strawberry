@@ -2,7 +2,7 @@ from games.chess.chess import get_coordinates
 
 
 class Board(list):
-    def __init__(self, fen=None):
+    def __init__(self, fen=None, board=None):
         """
         :param fen: String adhering to Forsyth-Edwards Notation format.
         """
@@ -10,18 +10,46 @@ class Board(list):
         self.width = 8
         self.height = 8
         if fen is not None:
-            self.fen = fen
-        else:
+            self.__generate_from_fen(fen)
+            self._fen = fen
+        elif board is not None:
             # Initial state
-            self.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-        self.generate_by(self.fen)
+            self.__generate_from_board(board)
+            self._fen = self.__create_fen()
+        else:
+            raise ValueError("Must pass a FEN or a Board to create a Board from")
+
+    def __hash__(self):
+        return hash(self.fen)
+
+    @property
+    def fen(self):
+        return self._fen
+
+    def __create_fen(self):
+        fen = ""
+        placeholder = [[y for y in self[x]] for x in range(len(self))]
+        placeholder = list(map(list, zip(*placeholder)))
+        placeholder.reverse()
+        # Board should be oriented for proper display here
+        for r in placeholder:
+            for c in r:
+                count = 0
+                if c.isdigit():
+                    count += 1
+                else:
+                    if count != 0:
+                        fen += count
+                    fen += c
+            fen += "/"
+        fen.rstrip("/")
+        return fen
 
     def copy(self):
-        """ Creates a copy of the current board using the Forsyth-Edwards Notation representation of the board
-        """
-        return Board(self.fen)
+        """ Creates a copy of the current board using the Forsyth-Edwards Notation representation of the board """
+        return Board(board=self)
 
-    def generate_by(self, fen):
+    def __generate_from_fen(self, fen):
         """
         Modifies the board 'self' to represent the board-state given, or the initial board-state.
         :param fen: Forsyth-Edwards Notation representation of board state
@@ -48,6 +76,10 @@ class Board(list):
         # Transpose to allow board[x][y] indexing instead of board[y][x]
         placeholder = list(map(list, zip(*placeholder)))
         [self.append(x) for x in placeholder]
+
+    def __generate_from_board(self, board):
+        [self.append([c for c in r]) for r in board]
+        assert len(self) == len(board)
 
     def move_piece(self, xi=None, yi=None, xf=None, yf=None, ri=None, fi=None, rf=None, ff=None):
         """ Moves the token marker for a piece from one space to another.

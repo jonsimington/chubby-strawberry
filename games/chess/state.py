@@ -1,6 +1,7 @@
 from collections import namedtuple
 from games.chess.board import Board
 from games.chess.chess import *
+from operator import attrgetter
 
 Move = namedtuple("Move", "piece, file, rank, promotion, capture")
 Move.__new__.__defaults__ = (False, None)
@@ -43,7 +44,7 @@ class State:
                 r = int((action.piece.rank + action.rank) / 2)
                 self._en_passant_target = get_coordinates(r, action[0].file)
             else:
-                self._en_passant_target = None
+                self._en_passant_target = '-'
 
             self._friendly_pieces = []  # Modify the piece that was moved
             self._enemy_pieces = []
@@ -63,6 +64,7 @@ class State:
                 if c.rank == action.rank and c.file == action.file:
                     c.captured = True
                 self._friendly_pieces.append(c)
+            self._friendly_pieces.sort(key=attrgetter('value'), reverse=True)
 
             # Captures can only occur on players that are currently friendly (assuming two-player Chess)
             if action.piece.type == "Pawn" or len(self._friendly_pieces) != len(parent._friendly_pieces):
@@ -87,7 +89,13 @@ class State:
         self._parent = parent
         self._preceeding_action = action
         self._game = game
+        self._hash = self.__hash__()
         self._utility = self.__find_utility()
+
+    def __hash__(self):
+        """ Unique identifier of State - all important characteristics should be included. """
+        return hash("%s %s %s %s %s" % (self._board.fen, self._color[0].lower(), self._castle,
+                                       self._en_passant_target, self._turns_to_draw))
 
     # ----------------- PROPERTIES -----------------
 
@@ -98,6 +106,10 @@ class State:
     @property
     def game(self):
         return self._game
+
+    @property
+    def hash(self):
+        return self._hash
 
     @property
     def moves(self):
@@ -270,8 +282,9 @@ class State:
             kx, ky = xf, yf
 
         new_board = self._board.copy()
-
         # Move piece indicator
+        assert 0 <= xi < 8
+        assert 0 <= yi < 8
         marker = new_board[xi][yi]
         new_board[xi][yi] = ""
         new_board[xf][yf] = marker

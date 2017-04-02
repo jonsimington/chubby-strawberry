@@ -1,5 +1,6 @@
 # This is where you build your AI for the Chess game.
 
+import time
 from games.chess.state import State
 from joueur.base_ai import BaseAI
 
@@ -128,15 +129,28 @@ class AI(BaseAI):
         print(self.game.fen)
 
 states_checked = 0
+start_time = 0
+EXPECTED_MOVES = 75
+MAX_TURN_TIME = 900 / EXPECTED_MOVES  # 15 minutes * 60 seconds / 1 minute = 900 seconds
 
 
 # noinspection PyUnboundLocalVariable
 def mini_max_decision(state):  # returns an action
     """ Decides what move to take by the MiniMax algorithm detailed in chapter 5 """
+    global start_time
+    start_time = time.time()
     player = to_move(state)
+    history_table = dict()
+
     print("MiniMax Decision")
 
-    # noinspection PyShadowingNames
+    def add_to_table(curr_state, action):
+        try:
+            history_table[(curr_state.hash, action)] += 1
+        except KeyError:
+            history_table[(curr_state.hash, action)] = 1
+
+    # noinspection PyShadowingNames,PyUnboundLocalVariable
     def max_value(state, alpha, beta, depth, max_depth):  # returns a utility value
         """ Selects the maximum value for the utility of a state resulting from a move by the AI player """
         global states_checked
@@ -147,16 +161,23 @@ def mini_max_decision(state):  # returns an action
             return utility(state, player)
 
         v = -infinity
-        l = actions(state)
-        for a in l:
-            v = max(v, min_value(result(state, a), alpha, beta, depth + 1, max_depth))
+        best_action = actions(state)[0]
+        for a in actions(state):
+            if time.time() - start_time > MAX_TURN_TIME:
+                break
+            mv = min_value(result(state, a), alpha, beta, depth + 1, max_depth)
+            if mv > v:  # Will always trigger on the first run
+                v = mv
+                best_action = a
             if v >= beta:
+                add_to_table(state, best_action)
                 return v
             alpha = max(alpha, v)
         states_checked += 1
+        add_to_table(state, best_action)
         return v
 
-    # noinspection PyShadowingNames
+    # noinspection PyShadowingNames,PyUnboundLocalVariable
     def min_value(state, alpha, beta, depth, max_depth):  # returns a utility value
         global states_checked
         # print("Min: %s" % states_checked)
@@ -165,12 +186,20 @@ def mini_max_decision(state):  # returns an action
             states_checked += 1
             return utility(state, player)
         v = infinity
+        best_action = actions(state)[0]
         for a in actions(state):
-            v = min(v, max_value(result(state, a), alpha, beta, depth + 1, max_depth))
+            if time.time() - start_time > MAX_TURN_TIME:
+                break
+            mv = max_value(result(state, a), alpha, beta, depth + 1, max_depth)
+            if mv < v:
+                v = mv
+                best_action = a
             if v <= alpha:
+                add_to_table(state, best_action)
                 return v
             beta = min(beta, v)
         states_checked += 1
+        add_to_table(state, best_action)
         return v
 
     for m_depth in range(2):
@@ -180,11 +209,14 @@ def mini_max_decision(state):  # returns an action
         print("Max depth of %s" % max_depth)
         max_utility = -infinity
         for a in actions(state):  # Find the maximum
+            if time.time() - start_time > MAX_TURN_TIME:
+                break
             min_utility = min_value(result(state, a), -infinity, infinity, 0, max_depth)
             if min_utility > max_utility:  # Guaranteed to trigger on first completion of min_value
                 max_utility = min_utility
                 best_action = a
         last_depth_best = best_action
+    print("Time used: %s" % (time.time() - start_time))
     return last_depth_best, max_utility
 
 
