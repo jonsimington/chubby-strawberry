@@ -144,25 +144,36 @@ def mini_max_decision(state):  # returns an action
 
     print("MiniMax Decision")
 
-    def add_to_table(curr_state, action):
+    def action_to_str(action):
+        return "%s %s %s %s %s %s" % (action.piece.color, action.piece.type, action.file,
+                                      action.rank, action.promotion, action.capture)
+
+    def add_to_table(action):
+        action_str = action_to_str(action)
         try:
-            history_table[(curr_state.hash, action)] += 1
+            history_table[hash(action_str)] += 1
         except KeyError:
-            history_table[(curr_state.hash, action)] = 1
+            history_table[hash(action_str)] = 1
 
     # noinspection PyShadowingNames,PyUnboundLocalVariable
     def max_value(state, alpha, beta, depth, max_depth):  # returns a utility value
         """ Selects the maximum value for the utility of a state resulting from a move by the AI player """
-        global states_checked
-        # print("Max: %s" % states_checked)
-        if terminal_test(state) or depth == max_depth:
-            # print("Terminal test confirmed!")
-            states_checked += 1
+        if terminal_test(state):
             return utility(state, player)
 
+        if depth == max_depth:
+            # TODO: Quiescence search.
+            if state.nonquiescent:
+                # Is still max because it's called on the same state, not the resultant state.
+                return max_value_quiescence(state, alpha, beta, depth=0, max_depth=2)
+            else:
+                return utility(state, player)
+
         v = -infinity
-        best_action = actions(state)[0]
-        for a in actions(state):
+        action_list = actions(state)
+        best_action = action_list[0]
+        action_list.sort(key=lambda x: history_table.get(x, 0), reverse=True)
+        for a in action_list:
             if time.time() - start_time > MAX_TURN_TIME:
                 break
             mv = min_value(result(state, a), alpha, beta, depth + 1, max_depth)
@@ -170,24 +181,22 @@ def mini_max_decision(state):  # returns an action
                 v = mv
                 best_action = a
             if v >= beta:
-                add_to_table(state, best_action)
+                add_to_table(best_action)
                 return v
             alpha = max(alpha, v)
-        states_checked += 1
-        add_to_table(state, best_action)
+        add_to_table(best_action)
         return v
 
     # noinspection PyShadowingNames,PyUnboundLocalVariable
     def min_value(state, alpha, beta, depth, max_depth):  # returns a utility value
-        global states_checked
-        # print("Min: %s" % states_checked)
         """ Selects the minimum value for the utility of a state resulting from a move by the enemy player """
         if terminal_test(state) or depth == max_depth:
-            states_checked += 1
             return utility(state, player)
         v = infinity
-        best_action = actions(state)[0]
-        for a in actions(state):
+        action_list = actions(state)
+        best_action = action_list[0]
+        action_list.sort(key=lambda x: history_table.get(x, 0), reverse=True)
+        for a in action_list:
             if time.time() - start_time > MAX_TURN_TIME:
                 break
             mv = max_value(result(state, a), alpha, beta, depth + 1, max_depth)
@@ -195,20 +204,66 @@ def mini_max_decision(state):  # returns an action
                 v = mv
                 best_action = a
             if v <= alpha:
-                add_to_table(state, best_action)
+                add_to_table(best_action)
                 return v
             beta = min(beta, v)
-        states_checked += 1
-        add_to_table(state, best_action)
+        add_to_table(best_action)
+        return v
+
+    # noinspection PyShadowingNames,PyUnboundLocalVariable
+    def max_value_quiescence(state, alpha, beta, depth, max_depth):
+        v = -infinity
+        if terminal_test(state) or depth == max_depth or not state.nonquiescent:
+            return utility(state, player)
+
+        action_list = actions(state)
+        best_action = action_list[0]
+        action_list.sort(key=lambda x: history_table.get(x, 0), reverse=True)
+        for a in action_list:
+            if time.time() - start_time > MAX_TURN_TIME:
+                break
+            mv = min_value_quiescence(result(state, a), alpha, beta, depth + 1, max_depth)
+            if mv > v:
+                v = mv
+                best_action = a
+            if v >= beta:
+                add_to_table(best_action)
+                return v
+            alpha = max(alpha, v)
+        add_to_table(best_action)
+        return v
+
+    # noinspection PyShadowingNames,PyUnboundLocalVariable
+    def min_value_quiescence(state, alpha, beta, depth, max_depth):
+        if terminal_test(state) or depth == max_depth or not state.nonquiescent:
+            return utility(state, player)
+
+        v = infinity
+        action_list = actions(state)
+        best_action = action_list[0]
+        action_list.sort(key=lambda x: history_table.get(x, 0), reverse=True)
+        for a in action_list:
+            if time.time() - start_time > MAX_TURN_TIME:
+                break
+            mv = max_value(result(state, a), alpha, beta, depth + 1, max_depth)
+            if mv < v:
+                v = mv
+                best_action = a
+            if v <= alpha:
+                add_to_table(best_action)
+                return v
+            beta = min(beta, v)
+        add_to_table(best_action)
+
         return v
 
     for m_depth in range(2):
-        global states_checked
-        states_checked = 0
         max_depth = m_depth + 1
         print("Max depth of %s" % max_depth)
         max_utility = -infinity
-        for a in actions(state):  # Find the maximum
+        action_list = actions(state)
+        action_list.sort(key=lambda x: history_table.get(x, 0), reverse=True)
+        for a in action_list:
             if time.time() - start_time > MAX_TURN_TIME:
                 break
             min_utility = min_value(result(state, a), -infinity, infinity, 0, max_depth)

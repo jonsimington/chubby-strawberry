@@ -30,8 +30,6 @@ class State:
             self._castle = list(game.fen.split(" ")[2])
 
         else:  # Initialize from acting upon a parent
-            # TODO: Not properly accounting for captured pieces. They remain in the array of pieces and add to utility
-            #       function despite no longer being in play.
             assert parent is not None and action is not None
             self._board = parent.board.copy()
 
@@ -95,7 +93,7 @@ class State:
     def __hash__(self):
         """ Unique identifier of State - all important characteristics should be included. """
         return hash("%s %s %s %s %s" % (self._board.fen, self._color[0].lower(), self._castle,
-                                       self._en_passant_target, self._turns_to_draw))
+                                        self._en_passant_target, self._turns_to_draw))
 
     # ----------------- PROPERTIES -----------------
 
@@ -126,6 +124,10 @@ class State:
     @property
     def utility(self):
         return int(self._utility)
+
+    @property
+    def nonquiescent(self):
+        return self.__in_check()
 
     # -------------- PUBLIC FUNCTIONS --------------
 
