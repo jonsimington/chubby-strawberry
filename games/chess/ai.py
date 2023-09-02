@@ -19,7 +19,7 @@ class AI(BaseAI):
             str: The name of your Player.
         """
 
-        return "team-john-maruska"  # REPLACE THIS WITH YOUR TEAM NAME
+        return "Chubby Strawberry"  # REPLACE THIS WITH YOUR TEAM NAME
 
     def start(self):
         """ This is called once the game starts and your AI knows its playerID
